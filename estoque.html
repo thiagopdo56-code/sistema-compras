@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque - Artes e Encantos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/estoque.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    
+    <div class="estoque-layout">
+        
+        <header class="header-operacao">
+            <a href="index.html" class="btn-voltar" title="Voltar para o Menu Principal">
+                <span class="tecla-esc">ESC</span> Voltar
+            </a>
+            
+            <div class="header-titulo">
+                <h2><i class="fa-solid fa-box-open"></i> GESTÃO DE ESTOQUE</h2>
+            </div>
+            
+            <div class="header-acoes">
+                <button type="button" class="btn-acao-principal" onclick="abrirModalProduto()">
+                    <i class="fa-solid fa-plus"></i> Novo Produto (F2)
+                </button>
+            </div>
+        </header>
+
+        <main class="painel-central">
+            
+            <div class="filtros-container">
+                <div class="filtro-grupo pesquisa">
+                    <label><i class="fa-solid fa-barcode"></i> Buscar Produto (Nome ou Código)</label>
+                    <input type="text" id="filtro-texto" placeholder="Digite o nome ou passe o leitor aqui..." autocomplete="off">
+                </div>
+                <div class="filtro-grupo categoria">
+                    <label><i class="fa-solid fa-tags"></i> Filtrar Categoria</label>
+                    <select id="filtro-categoria">
+                        <option value="TODAS">Todas as Categorias</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cód. Barras</th>
+                            <th>Produto e Variações</th>
+                            <th>Marca</th>
+                            <th>Categoria</th>
+                            <th>Preço Venda</th>
+                            <th>Estoque</th>
+                            <th>Status</th>
+                            <th style="text-align: center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-estoque">
+                        </tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="modal-produto" class="modal-overlay">
+        <div class="modal-content pdv-modal modal-lg">
+            <div class="modal-header-pdv">
+                <h2 id="titulo-modal-produto"><i class="fa-solid fa-plus-circle"></i> CADASTRAR PRODUTO</h2>
+            </div>
+            <div class="modal-body" style="padding: 20px; text-align: left; background: #fff;">
+                <form id="formCadastro">
+                    <div class="form-grid">
+                        <div class="input-pdv-config">
+                            <label>Código de Barras *</label>
+                            <input type="text" id="cad-barras" required placeholder="Passe o leitor...">
+                        </div>
+                        <div class="input-pdv-config">
+                            <label>Categoria *</label>
+                            <input type="text" id="cad-categoria" list="lista-categorias" required placeholder="Ex: Bebidas">
+                            <datalist id="lista-categorias"></datalist>
+                        </div>
+                        <div class="input-pdv-config">
+                            <label>Marca *</label>
+                            <input type="text" id="cad-marca" list="lista-marcas" required placeholder="Marca do produto">
+                            <datalist id="lista-marcas"></datalist>
+                        </div>
+                        <div class="input-pdv-config">
+                            <label>Unidade Base *</label>
+                            <select id="cad-unidade" required>
+                                <option value="UN">Unidade (UN)</option>
+                                <option value="KG">Quilograma (KG)</option>
+                                <option value="CX">Caixa (CX)</option>
+                                <option value="L">Litro (L)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="variacoes-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin:0; font-size: 1.1rem; color: #0055A4;"><i class="fa-solid fa-tags"></i> Itens/Variações do Código</h3>
+                            <button type="button" onclick="adicionarLinhaVariacao()" class="btn-add-var">
+                                <i class="fa-solid fa-plus"></i> Add Variação
+                            </button>
+                        </div>
+                        <div id="container-variacoes" style="display: flex; flex-direction: column; gap: 10px;">
+                            </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="button" class="btn-pdv-cancelar" onclick="fecharModal('modal-produto')">CANCELAR (ESC)</button>
+                        <button type="submit" class="btn-pdv-confirmar">SALVAR PRODUTO (ENTER)</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-grafico" class="modal-overlay">
+        <div class="modal-content pdv-modal modal-lg">
+            <div class="modal-header-pdv">
+                <h2 id="grafico-titulo"><i class="fa-solid fa-chart-line"></i> DESEMPENHO</h2>
+            </div>
+            <div class="modal-body" style="padding: 20px; background: #fff;">
+                <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                    <div class="input-pdv-config" style="flex: 1; margin:0;">
+                        <label>Data Inicial</label>
+                        <input type="date" id="grafico-data-ini" onchange="atualizarGrafico()">
+                    </div>
+                    <div class="input-pdv-config" style="flex: 1; margin:0;">
+                        <label>Data Final</label>
+                        <input type="date" id="grafico-data-fim" onchange="atualizarGrafico()">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                    <div class="stat-box">
+                        <p>Unidades Vendidas</p>
+                        <h3 id="stat-total" style="color: #10b981;">0</h3>
+                    </div>
+                    <div class="stat-box">
+                        <p>Média Diária</p>
+                        <h3 id="stat-media" style="color: #0055A4;">0.0</h3>
+                    </div>
+                    <div class="stat-box">
+                        <p>Tendência</p>
+                        <h3 id="stat-tendencia" style="color: #64748b;">
+                            <i id="icone-tendencia" class="fa-solid fa-minus"></i>
+                        </h3>
+                    </div>
+                </div>
+
+                <div style="position: relative; height: 300px; width: 100%; border: 2px solid #b3d4ff; border-radius: 8px; padding: 10px; background: #f0f8ff;">
+                    <canvas id="canvasGraficoVendas"></canvas>
+                </div>
+                <button type="button" class="btn-pdv-cancelar" style="margin-top: 15px;" onclick="fecharModal('modal-grafico')">FECHAR (ESC)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-excluir" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 450px;">
+            <div class="modal-header-pdv" style="background: #b91c1c;">
+                <h2><i class="fa-solid fa-trash"></i> EXCLUIR PRODUTO</h2>
+            </div>
+            <div class="modal-body" style="padding: 20px; background: #fff; text-align: center;">
+                <div style="font-size: 3rem; color: #ef4444; margin-bottom: 10px;">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                </div>
+                <p id="texto-confirmacao-exclusao" style="font-size: 1.1rem; color: #003366; font-weight: bold; margin-bottom: 20px;"></p>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn-pdv-cancelar" onclick="fecharModal('modal-excluir')">NÃO, CANCELAR</button>
+                    <button type="button" class="btn-pdv-confirmar" id="btn-confirmar-exclusao" style="background: #ef4444;">SIM, EXCLUIR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/imask"></script>
+    <script src="js/estoque.js"></script>
+</body>
+</html>

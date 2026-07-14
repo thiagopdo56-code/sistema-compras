@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produtos - Sistema de Mercado</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/produtos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="top-navbar navbar-cinza">
+            <div class="navbar-brand">
+                <i class="fa-solid fa-store"></i>
+                <span>Marcão Estabelecimento</span>
+            </div>
+            <nav class="navbar-menu">
+                <a href="index.html" class="menu-item"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+                <a href="vendas.html" class="menu-item"><i class="fa-solid fa-cash-register"></i> PDV</a>
+                <a href="produtos.html" class="menu-item active"><i class="fa-solid fa-box"></i> Produtos</a>
+                <a href="estoque.html" class="menu-item"><i class="fa-solid fa-boxes-stacked"></i> Estoque</a>
+                <a href="contas.html" class="menu-item"><i class="fa-solid fa-book-open"></i> Contas (Fiado)</a>
+                <a href="relatorios.html" class="menu-item"><i class="fa-solid fa-file-invoice-dollar"></i> Relatórios</a>
+            </nav>
+            <div class="navbar-user">
+                <span class="user-status"><i class="fa-solid fa-circle" style="color: #10b981;"></i> Terminal Online</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="page-header d-flex-between">
+                <div class="header-title">
+                    <h1>Gestão de Produtos</h1>
+                    <p class="subtitle">Cadastre e gerencie o catálogo do mercado</p>
+                </div>
+                <button class="btn-novo" onclick="abrirModalProduto()">
+                    <i class="fa-solid fa-plus"></i> Novo Produto
+                </button>
+            </div>
+
+            <div class="filtros-container" style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+                <div class="filtro-grupo">
+                    <label>Pesquisar Produto (Nome ou Código)</label>
+                    <input type="text" id="filtro-pesquisa" placeholder="Digite o nome ou passe o leitor..." autocomplete="off">
+                </div>
+                <div class="filtro-grupo">
+                    <label>Ordenar Por</label>
+                    <select id="filtro-ordem">
+                        <option value="padrao">Ordem de Cadastro</option>
+                        <option value="az">Alfabética (A-Z)</option>
+                        <option value="mais_vendidos">🔥 Mais Vendidos</option>
+                        <option value="menos_vendidos">🧊 Menos Vendidos</option>
+                    </select>
+                </div>
+            </div>
+
+            <section class="content-card">
+                <h2><i class="fa-solid fa-list"></i> Produtos Cadastrados</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cód. Barras</th>
+                                <th>Produto</th>
+                                <th>Marca</th>
+                                <th>Categoria</th>
+                                <th>Preço Venda</th>
+                                <th>Estoque</th>
+                                <th style="text-align: center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-produtos-body">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal-grafico" class="modal-overlay">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-chart-line"></i> Estatísticas: <span id="grafico-nome-produto" style="color: #2563eb;"></span></h2>
+                <button class="btn-close" onclick="fecharModal('modal-grafico')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="stats-resumo-grid">
+                    <div class="stat-card">
+                        <i class="fa-solid fa-box-open" style="color: #8b5cf6;"></i>
+                        <div>
+                            <p>Total Vendido</p>
+                            <h3 id="stat-total">0 un</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fa-solid fa-calendar-day" style="color: #10b981;"></i>
+                        <div>
+                            <p>Média Diária</p>
+                            <h3 id="stat-media">0.0 un/dia</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fa-solid fa-arrow-trend-up" id="icone-tendencia" style="color: #f59e0b;"></i>
+                        <div>
+                            <p>Tendência (Últ. dias)</p>
+                            <h3 id="stat-tendencia">-</h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="width: 100%; height: 300px; margin-top: 20px;">
+                    <canvas id="graficoCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-produto" class="modal-overlay">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2 id="titulo-modal-produto"><i class="fa-solid fa-plus-circle"></i> Cadastrar Produto</h2>
+                <button class="btn-close" onclick="fecharModal('modal-produto')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCadastro">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Código de Barras *</label>
+                            <input type="text" id="cad-barras" required placeholder="Passe o leitor...">
+                        </div>
+                        <div class="input-group">
+                            <label>Nome do Produto *</label>
+                            <input type="text" id="cad-nome" required placeholder="Ex: Arroz Branco 5kg">
+                        </div>
+                        <div class="input-group">
+                            <label>Categoria *</label>
+                            <input type="text" id="cad-categoria" required placeholder="Ex: Alimentos">
+                        </div>
+                        <div class="input-group">
+                            <label>Marca *</label>
+                            <input type="text" id="cad-marca" required placeholder="Marca do produto">
+                        </div>
+                        <div class="input-group">
+                            <label>Preço de Venda (R$) *</label>
+                            <input type="text" id="cad-preco" required placeholder="0,00">
+                        </div>
+                        <div class="input-group">
+                            <label>Unidade *</label>
+                            <select id="cad-unidade" required>
+                                <option value="UN">Unidade (UN)</option>
+                                <option value="KG">Quilograma (KG)</option>
+                                <option value="CX">Caixa (CX)</option>
+                                <option value="L">Litro (L)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label>Estoque Atual *</label>
+                        <input type="text" id="cad-estoque" required placeholder="0">
+                    </div>
+
+                    <button type="submit" class="btn-novo" style="width: 100%; justify-content: center; margin-top: 25px;">
+                        <i class="fa-solid fa-save"></i> Salvar Produto
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-excluir" class="modal-overlay">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-trash"></i> Excluir Produto</h2>
+                <button class="btn-close" onclick="fecharModal('modal-excluir')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 3rem; color: #ef4444; margin-bottom: 10px;">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                </div>
+                <p id="texto-confirmacao-exclusao" style="margin-bottom: 20px; font-size: 1.1rem; color: #334155;"></p>
+                
+                <div class="form-linha" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button type="button" class="btn-acao-secundaria" onclick="fecharModal('modal-excluir')">Cancelar</button>
+                    <button type="button" class="btn-acao-perigo" id="btn-confirmar-exclusao">Sim, Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/imask"></script>
+    <script src="js/produtos.js"></script>
+</body>
+</html>

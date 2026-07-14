@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caixa PDV - Artes Maior</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/vendas.css">
+    <style>
+        .linha-selecionada { background-color: #bfdbfe !important; outline: 2px solid #2563eb; font-weight: bold; }
+        .input-rapido { width: 100%; padding: 10px; font-size: 1.2rem; border: 2px solid #b3d4ff; border-radius: 6px; margin-bottom: 10px; outline: none; }
+        .input-rapido:focus { border-color: #2563eb; }
+        .item-peso { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-size: 1.2rem; color: #003366; transition: 0.1s; display: flex; justify-content: space-between; cursor: pointer;}
+        .item-peso.selecionado { background-color: #bfdbfe; border-left: 5px solid #2563eb; font-weight: 900; }
+        .item-peso:hover { background-color: #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="pdv-layout">
+        
+        <div class="painel-notinha-container">
+            <div class="notinha-papel">
+                <div class="notinha-cabecalho">
+                    <h2 id="cupom-nome-mercado">Artes e Encantos</h2>
+                    <p id="cupom-cnpj">CNPJ: 00.000.000/0001-00</p>
+                    <p id="cupom-endereco">Rua Principal, 123 - Centro</p>
+                    <p>---------------------------------</p>
+                    <p>CUPOM FISCAL</p>
+                    <p>---------------------------------</p>
+                    <p style="font-size: 0.9rem; font-weight: bold; margin-top: 5px;">CPF: <span id="cupom-cpf-cliente">Não informado</span></p>
+                    <p style="font-size: 0.9rem; font-weight: bold; margin-top: 2px;">CNPJ Cliente: <span id="cupom-cnpj-cliente">Não informado</span></p>
+                    <div id="status-fiado-carregado" style="color: #003366; font-weight: 900; margin-top: 10px; display: none;">
+                        CARRINHO DO FIADO:<br>[ <span id="nome-cliente-fiado-nota"></span> ]
+                    </div>
+                </div>
+                <table class="notinha-tabela">
+                    <thead><tr><th>QTD</th><th>DESCRIÇÃO</th><th>UN</th><th>TOTAL</th></tr></thead>
+                    <tbody id="lista-carrinho-notinha"></tbody>
+                </table>
+                <div class="notinha-rodape">
+                    <p>---------------------------------</p>
+                    <div class="notinha-totais"><span>SUBTOTAL:</span><span id="notinha-subtotal">R$ 0,00</span></div>
+                    <div class="notinha-totais destaque"><span>TOTAL:</span><span id="notinha-total">R$ 0,00</span></div>
+                    <p style="text-align: center; margin-top: 15px;" id="cupom-rodape">Obrigado pela preferência!</p>
+                </div>
+            </div>
+            <div class="notinha-picote"></div>
+        </div>
+
+        <div class="painel-operacao">
+            
+            <div class="header-operacao">
+                <a href="index.html" class="btn-voltar" title="Voltar para o Menu Principal" id="btn-voltar-menu">
+                    <span class="tecla-esc">ESC</span> Voltar
+                </a>
+                <div class="status-caixa"><i class="fa-solid fa-circle"></i> CAIXA ABERTO</div>
+                <div class="header-acoes">
+                    <div style="background: #f0f8ff; padding: 5px 15px; border-radius: 6px; border: 2px solid #b3d4ff; color: #003366; font-weight: bold; display: flex; gap: 10px; font-size: 0.85rem;">
+                        <span>CPF: <span id="display-cpf-nota" style="color: #2563eb;">Não informado</span></span>
+                        <span>|</span>
+                        <span>CNPJ: <span id="display-cnpj-nota" style="color: #4f46e5;">Não informado</span></span>
+                    </div>
+                    <button class="btn-icone" onclick="abrirConfigPeso()" title="Configurar Produtos por Peso"><i class="fa-solid fa-weight-scale"></i></button>
+                    <button class="btn-icone" onclick="abrirConfiguracoes()" title="Configurar Taxas"><i class="fa-solid fa-percent"></i></button>
+                    <button class="btn-icone" onclick="abrirConfigImpressora()" title="Configurar Impressora"><i class="fa-solid fa-print"></i></button>
+                    <div class="operador"><i class="fa-solid fa-user-tie"></i> OP: Gerência</div>
+                </div>
+            </div>
+
+            <div class="display-produto-atual">
+                <h1 id="display-nome-produto">AGUARDANDO PRODUTO...</h1>
+                <div class="display-valores-grid">
+                    <div class="display-box">
+                        <span class="label">Quantidade</span>
+                        <span class="valor" id="display-qtd" style="color: #f59e0b;">1,000</span>
+                    </div>
+                    <div class="display-box">
+                        <span class="label">Valor Unit. (R$)</span>
+                        <span class="valor" id="display-unit">0,00</span>
+                    </div>
+                    <div class="display-box destaque-total">
+                        <span class="label">Valor Total (R$)</span>
+                        <span class="valor" id="display-subtotal">0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="leitor-container">
+                <label for="venda-barras"><i class="fa-solid fa-barcode"></i> CÓDIGO DE BARRAS</label>
+                <input type="text" id="venda-barras" placeholder="Passe o leitor ou digite o código..." autocomplete="off">
+            </div>
+
+            <div class="menu-atalhos">
+                <button class="btn-atalho" onclick="abrirModalCNPJ()" style="background: #4f46e5; border-color: #4338ca; color: white;"><span class="tecla" style="background: #312e81; color: white; border:none;">F1</span> CNPJ na Nota</button>
+                <button class="btn-atalho" onclick="abrirPesquisa()"><span class="tecla">F2</span> Buscar Produto</button>
+                <button class="btn-atalho" onclick="abrirQuantidade()"><span class="tecla">F3</span> Alterar Qtd</button>
+                <button class="btn-atalho na-conta" onclick="abrirModalContas()"><span class="tecla">F4</span> Na Conta (Fiado)</button>
+                <button class="btn-atalho" onclick="abrirModalCPF()" style="background: #3b82f6; border-color: #2563eb; color: white;"><span class="tecla" style="background: #1d4ed8; color: white; border:none;">F7</span> CPF na Nota</button>
+                <button class="btn-atalho" onclick="abrirEscolhaAvulso()" style="background: #f59e0b; border-color: #d97706; color: white;"><span class="tecla" style="background: #b45309; color: white; border:none;">F8</span> Prod. Avulso</button>
+                <button class="btn-atalho" onclick="abrirModalVendaPeso()" style="background: #10b981; border-color: #059669; color: white;"><span class="tecla" style="background: #047857; color: white; border:none;">F9</span> Prod. Peso</button>
+                <button class="btn-atalho perigo" onclick="cancelarVenda()"><span class="tecla">DEL</span> Cancelar Venda</button>
+                <button class="btn-atalho finalizar" onclick="abrirPagamento()"><span class="tecla">F12</span> Finalizar Venda</button>
+            </div>
+            <p style="text-align:center; color:#64748b; margin-top: 10px; font-size: 0.85rem;"><i class="fa-solid fa-keyboard"></i> Pressione <strong>TAB</strong> para navegar e excluir itens da notinha.</p>
+        </div>
+    </div>
+
+    <!-- MODAL CPF (F7) -->
+    <div id="modal-cpf" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 400px;">
+            <div class="modal-header-pdv"><h2><i class="fa-solid fa-id-card"></i> CPF NA NOTA (F7)</h2></div>
+            <div class="modal-body" style="padding: 20px;">
+                <input type="text" id="input-cpf-modal" placeholder="000.000.000-00" style="width: 100%; font-size: 2rem; text-align: center; padding: 15px; border: 4px solid #0055A4; border-radius: 8px; color: #0055A4; font-weight: 900; outline: none; background: #f0f8ff;">
+                <button class="btn-pdv-confirmar" onclick="confirmarCPF()" style="margin-top: 15px;">CONFIRMAR (ENTER)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CNPJ (F1) -->
+    <div id="modal-cnpj" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 450px;">
+            <div class="modal-header-pdv" style="background: #4f46e5;"><h2><i class="fa-solid fa-building"></i> CNPJ NA NOTA (F1)</h2></div>
+            <div class="modal-body" style="padding: 20px;">
+                <input type="text" id="input-cnpj-modal" placeholder="00.000.000/0000-00" style="width: 100%; font-size: 1.8rem; text-align: center; padding: 15px; border: 4px solid #4f46e5; border-radius: 8px; color: #4f46e5; font-weight: 900; outline: none; background: #eef2ff;">
+                <button class="btn-pdv-confirmar" onclick="confirmarCNPJ()" style="margin-top: 15px; background: #4f46e5;">CONFIRMAR (ENTER)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CADASTRAR NOVA LOJA (CNPJ) -->
+    <div id="modal-cadastrar-cnpj" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 450px;">
+            <div class="modal-header-pdv" style="background: #4f46e5;"><h2><i class="fa-solid fa-building"></i> CADASTRAR NOVA LOJA</h2></div>
+            <div class="modal-body" style="padding: 20px; text-align: left; background: #fff;">
+                <p style="color: #ef4444; font-weight: bold; margin-bottom: 15px; text-align:center;">CNPJ não encontrado! Cadastre a loja:</p>
+                <div class="input-pdv-config" style="margin-bottom: 15px;">
+                    <label>Nome da Loja *</label>
+                    <input type="text" id="novocnpj-nome" style="width: 100%; padding: 10px; font-size: 1.2rem; border: 2px solid #b3d4ff; border-radius: 6px; outline: none; text-transform: uppercase;" required>
+                </div>
+                <div class="input-pdv-config" style="margin-bottom: 20px;">
+                    <label>CNPJ *</label>
+                    <input type="text" id="novocnpj-cnpj" style="width: 100%; padding: 10px; font-size: 1.2rem; border: 2px solid #cbd5e1; border-radius: 6px; background: #e2e8f0; color: #475569; outline: none;" required readonly>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-pdv-cancelar" onclick="fecharModal('modal-cadastrar-cnpj')">CANCELAR</button>
+                    <button class="btn-pdv-confirmar" style="background: #4f46e5;" onclick="salvarNovoCNPJ()">SALVAR (ENTER)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-quantidade" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 400px;">
+            <div class="modal-header-pdv"><h2><i class="fa-solid fa-asterisk"></i> ALTERAR QUANTIDADE (F3)</h2></div>
+            <div class="modal-body" style="padding: 20px;">
+                <p style="color: #003366; font-weight: bold; margin-bottom: 15px;">Qual a quantidade do próximo produto?</p>
+                <input type="text" id="input-nova-qtd" value="1" style="width: 100%; font-size: 3rem; text-align: center; padding: 15px; border: 4px solid #0055A4; border-radius: 8px; color: #0055A4; font-weight: 900; outline: none; background: #f0f8ff;">
+                <button class="btn-pdv-confirmar" onclick="confirmarQuantidade()" style="margin-top: 15px;">CONFIRMAR (ENTER)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-pagamento" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 700px;">
+            <div class="modal-header-pdv">
+                <h2><i class="fa-solid fa-cash-register"></i> PAGAMENTO (F12)</h2>
+                <h1 class="total-cobrar" style="font-size: 2.5rem;">TOTAL: <span id="pagamento-total-cobrar">R$ 0,00</span></h1>
+            </div>
+            
+            <div class="formas-pagamento-grid" style="padding: 15px 20px 5px 20px;">
+                <div class="forma-box active" id="btn-pgto-dinheiro" onclick="selecionarFormaPagamento('Dinheiro')"><i class="fa-solid fa-money-bill-wave"></i><span>Dinheiro (F1)</span></div>
+                <div class="forma-box" id="btn-pgto-cartao" onclick="selecionarFormaPagamento('Cartão')"><i class="fa-solid fa-credit-card"></i><span>CARTÃO(F2)</span></div>
+                <div class="forma-box" id="btn-pgto-pix" onclick="selecionarFormaPagamento('PIX')"><i class="fa-brands fa-pix"></i><span>PIX (F3)</span></div>
+            </div>
+
+            <div class="valores-pagamento-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px 20px;">
+                <div>
+                    <div class="input-pdv" style="margin-bottom: 10px;">
+                        <label>Valor (R$):</label>
+                        <input type="text" id="pagamento-valor-recebido" placeholder="0,00" onkeyup="verificarEnterPagamento(event)">
+                    </div>
+                    <button class="btn-pdv-confirmar" style="font-size: 1rem; padding: 12px; border-radius: 6px; background: #2563eb;" onclick="adicionarPagamentoCaixa()">INSERIR PAGAMENTO (ENTER)</button>
+                    <div id="lista-pagamentos-pdv" style="margin-top: 15px; text-align: left; font-size: 0.95rem; font-weight: bold; color: #003366; max-height: 100px; overflow-y: auto;"></div>
+                </div>
+
+                <div style="background: #f0f8ff; border: 2px solid #b3d4ff; border-radius: 8px; padding: 15px; text-align: right; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="color: #0055A4; font-weight: bold; margin-bottom: 5px;">Falta Pagar:</p>
+                    <h2 id="pagamento-falta" style="color: #ef4444; font-size: 2.5rem; margin: 0;">R$ 0,00</h2>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #b3d4ff;">
+                        <p style="color: #64748b; font-weight: bold; font-size: 1.1rem;">Troco ao Cliente: <span id="pagamento-troco" style="color: #10b981; font-size: 1.5rem;">R$ 0,00</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-finalizar-venda-btn" class="btn-pdv-confirmar" onclick="abrirModalImpressao()" style="background: #10b981; opacity: 0.5; pointer-events: none;">
+                <i class="fa-solid fa-check-circle"></i> CONCLUIR VENDA (ENTER)
+            </button>
+            <p class="dica-esc">Pressione ESC para cancelar o pagamento</p>
+        </div>
+    </div>
+
+    <div id="modal-confirmar-impressao" class="modal-overlay" style="z-index: 10000;">
+        <div class="modal-content pdv-modal" style="width: 450px;">
+            <div class="modal-header-pdv" style="background: #0055A4;">
+                <h2><i class="fa-solid fa-print"></i> IMPRIMIR CUPOM?</h2>
+            </div>
+            <div class="modal-body" style="padding: 30px; text-align: center; background: #fff;">
+                <i class="fa-solid fa-receipt" style="font-size: 4rem; color: #64748b; margin-bottom: 20px;"></i>
+                <h3 style="color: #003366; margin-bottom: 30px;">Deseja imprimir o cupom desta venda?</h3>
+                
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button class="btn-pdv-confirmar" style="background: #10b981; flex: 1;" onclick="confirmarVendaComImpressao(true)">
+                        <i class="fa-solid fa-check"></i> SIM (F1)
+                    </button>
+                    <button class="btn-pdv-confirmar" style="background: #ef4444; flex: 1;" onclick="confirmarVendaComImpressao(false)">
+                        <i class="fa-solid fa-xmark"></i> NÃO (F2)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-avulso" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 400px;">
+            <div class="modal-header-pdv" style="background: #f59e0b;"><h2><i class="fa-solid fa-box-open"></i> PRODUTO AVULSO (F8)</h2></div>
+            <div class="modal-body" style="padding: 20px; text-align: left;">
+                <label style="font-weight: bold; color: #003366;">Nome do Produto</label>
+                <input type="text" id="avulso-nome" placeholder="Ex: Pão Doce" class="input-rapido" onkeypress="if(event.key==='Enter') document.getElementById('avulso-valor').focus();">
+                <label style="font-weight: bold; color: #003366;">Valor (R$)</label>
+                <input type="text" id="avulso-valor" placeholder="0,00" class="input-rapido" onkeypress="if(event.key==='Enter') confirmarAvulso();">
+                <button class="btn-pdv-confirmar" style="background: #f59e0b; border-color:#d97706; margin-top: 10px;" onclick="confirmarAvulso()">ADICIONAR (ENTER)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-variacoes" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 500px;">
+            <div class="modal-header-pdv" style="background: #0055A4;">
+                <h2><i class="fa-solid fa-list"></i> ESCOLHA A VARIAÇÃO</h2>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <h3 id="variacao-nome-produto" style="color: #003366; margin-bottom: 15px; text-transform: uppercase;">PRODUTO</h3>
+                <div id="lista-variacoes" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;"></div>
+            </div>
+            <p class="dica-esc" style="margin-bottom: 10px;">Setas para navegar | ENTER para confirmar | ESC para cancelar</p>
+        </div>
+    </div>
+
+    <div id="modal-venda-peso" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 500px;">
+            <div class="modal-header-pdv" style="background: #10b981;"><h2><i class="fa-solid fa-scale-balanced"></i> VENDA POR PESO (F9)</h2></div>
+            <div class="modal-body" style="padding: 20px;">
+                <div id="passo-1-peso">
+                    <p style="color: #003366; font-weight: bold; margin-bottom: 10px; text-align: left;">Selecione o produto (Setas + Enter):</p>
+                    <div id="lista-peso-venda" style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 6px; max-height: 250px; overflow-y: auto; text-align: left;"></div>
+                </div>
+                <div id="passo-2-peso" style="display: none; text-align: center;">
+                    <h3 id="titulo-produto-selecionado" style="color: #0055A4; margin-bottom: 15px;">PRODUTO</h3>
+                    <p style="color: #64748b; font-weight: bold; margin-bottom: 10px;">Informe o Peso (Kg):</p>
+                    <input type="text" id="input-peso-kg" placeholder="0,000" style="width: 100%; font-size: 3rem; text-align: center; padding: 15px; border: 4px solid #10b981; border-radius: 8px; color: #10b981; font-weight: 900; outline: none; background: #ecfdf5;">
+                    <button class="btn-pdv-confirmar" onclick="confirmarVendaPeso()" style="background: #10b981; margin-top: 15px;">CONFIRMAR (ENTER)</button>
+                </div>
+            </div>
+            <p class="dica-esc" style="margin-bottom: 10px;">ESC para cancelar</p>
+        </div>
+    </div>
+
+    <div id="modal-config-peso" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 500px;">
+            <div class="modal-header-pdv" style="background: #0055A4;"><h2><i class="fa-solid fa-weight-scale"></i> Configurar Balança</h2></div>
+            <div class="modal-body" style="padding: 20px; text-align: left;">
+                <p style="margin-bottom: 15px; font-size: 0.9rem; color: #64748b;">Cadastre produtos vendidos por KG.</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <div style="flex: 2;">
+                        <label style="font-weight: bold; color: #003366;">Nome</label>
+                        <input type="text" id="config-peso-nome" class="input-rapido" placeholder="Ex: Acém" onkeypress="if(event.key==='Enter') document.getElementById('config-peso-preco').focus();">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: bold; color: #003366;">Preço (1KG)</label>
+                        <input type="text" id="config-peso-preco" class="input-rapido" placeholder="0,00" onkeypress="if(event.key==='Enter') salvarProdutoPeso();">
+                    </div>
+                </div>
+                <button class="btn-pdv-confirmar" style="background: #0055A4; margin-bottom: 20px;" onclick="salvarProdutoPeso()">+ CADASTRAR PRODUTO</button>
+                <h4 style="color: #003366; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">Produtos Cadastrados:</h4>
+                <div id="lista-config-peso" style="max-height: 150px; overflow-y: auto; font-size: 0.95rem;"></div>
+                <button class="btn-pdv-cancelar" style="margin-top: 15px; width: 100%;" onclick="fecharModal('modal-config-peso')">FECHAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-cadastro-rapido" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 450px;">
+            <div class="modal-header-pdv" style="background: #10b981;"><h2><i class="fa-solid fa-bolt"></i> CADASTRO RÁPIDO</h2></div>
+            <div class="modal-body" style="padding: 20px; text-align: left;">
+                <p style="color: #ef4444; font-weight: bold; margin-bottom: 15px; text-align:center;">Produto não encontrado! Cadastre agora:</p>
+                <label style="font-weight: bold; color: #003366;">Código de Barras</label>
+                <input type="text" id="rapido-barras" readonly class="input-rapido" style="background: #e2e8f0; color: #64748b;">
+                <label style="font-weight: bold; color: #003366;">Nome do Produto *</label>
+                <input type="text" id="rapido-nome" class="input-rapido" onkeypress="if(event.key==='Enter') document.getElementById('rapido-valor').focus();">
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label style="font-weight: bold; color: #003366;">Valor (R$) *</label>
+                        <input type="text" id="rapido-valor" placeholder="0,00" class="input-rapido" onkeypress="if(event.key==='Enter') document.getElementById('rapido-estoque').focus();">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: bold; color: #003366;">Estoque Inicial *</label>
+                        <input type="number" id="rapido-estoque" value="1" class="input-rapido" onkeypress="if(event.key==='Enter') salvarCadastroRapido();">
+                    </div>
+                </div>
+                <button class="btn-pdv-confirmar" style="background: #10b981; margin-top: 10px;" onclick="salvarCadastroRapido()">SALVAR E VENDER (ENTER)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-selecionar-conta" class="modal-overlay">
+        <div class="modal-content pdv-modal">
+            <div class="modal-header-pdv">
+                <h2><i class="fa-solid fa-book-open"></i> VINCULAR NA CONTA (F4)</h2>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <button class="btn-pdv-confirmar" style="margin-bottom: 15px; font-size: 1.1rem; padding: 15px;" onclick="abrirModalCadastrarFiado()">
+                    <i class="fa-solid fa-user-plus"></i> CADASTRAR NOVO CLIENTE AQUI
+                </button>
+                <h3 style="color: #0055A4; text-align: left; margin-bottom: 10px;">Ou selecione um cliente existente:</h3>
+                <input type="text" id="pesquisa-conta-f4" placeholder="Buscar cliente por nome..." class="input-rapido" oninput="filtrarContasF4()" style="margin-bottom: 15px;">
+                <div id="lista-contas-existentes" class="lista-clientes-fiado"></div>
+            </div>
+            <p class="dica-esc" style="margin-bottom: 10px;">Pressione ESC para fechar</p>
+        </div>
+    </div>
+    
+    <div id="modal-cadastrar-fiado" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 450px;">
+            <div class="modal-header-pdv"><h2><i class="fa-solid fa-user-plus"></i> NOVO FIADO NO CAIXA (F4)</h2></div>
+            <div class="modal-body" style="padding: 20px; text-align: left; background: #fff;">
+                <div class="input-pdv-config" style="margin-bottom: 15px;"><label>Nome do Cliente *</label><input type="text" id="novofiado-nome" required></div>
+                <div class="input-pdv-config" style="margin-bottom: 15px;"><label>CPF *</label><input type="text" id="novofiado-cpf" required></div>
+                <div class="input-pdv-config" style="margin-bottom: 20px;"><label>Telefone *</label><input type="text" id="novofiado-telefone" required></div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-pdv-cancelar" onclick="fecharModal('modal-cadastrar-fiado')">CANCELAR</button>
+                    <button class="btn-pdv-confirmar" onclick="salvarNovoFiadoNoPDV()">SALVAR (ENTER)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modal-taxas" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 400px;">
+            <div class="modal-header-pdv"><h2><i class="fa-solid fa-percent"></i> Taxas do Cartão</h2></div>
+            <div class="modal-body" style="padding: 20px; text-align: left;">
+                <div class="input-pdv-config"><label>Taxa Crédito (%)</label><input type="text" id="taxa-credito"></div>
+                <div class="input-pdv-config"><label>Taxa Débito (%)</label><input type="text" id="taxa-debito"></div>
+                <div class="input-pdv-config" style="margin-bottom: 20px;"><label>Taxa PIX (%)</label><input type="text" id="taxa-pix"></div>
+                <button class="btn-pdv-confirmar" onclick="salvarTaxas()">SALVAR TAXAS</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modal-config-impressora" class="modal-overlay">
+        <div class="modal-content pdv-modal">
+            <div class="modal-header-pdv"><h2><i class="fa-solid fa-print"></i> Configurar Cupom</h2></div>
+            <div class="modal-body" style="padding: 20px; text-align: left;">
+                <div class="input-pdv-config"><label>Nome</label><input type="text" id="cfg-mercado-nome"></div>
+                <div class="input-pdv-config"><label>CNPJ</label><input type="text" id="cfg-mercado-cnpj"></div>
+                <div class="input-pdv-config"><label>Endereço</label><input type="text" id="cfg-mercado-endereco"></div>
+                <div class="input-pdv-config" style="margin-bottom: 20px;"><label>Rodapé</label><input type="text" id="cfg-mercado-rodape"></div>
+                <button class="btn-pdv-confirmar" onclick="salvarConfigImpressora()">SALVAR</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="recibo-impressao"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script src="https://unpkg.com/imask"></script>
+    <script src="js/vendas.js"></script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contas (Fiado) - Supermercado Marcão</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/contas.css">
+</head>
+<body>
+    
+    <div class="contas-layout">
+        
+        <header class="header-operacao">
+            <a href="index.html" class="btn-voltar" title="Voltar para o Menu Principal">
+                <span class="tecla-esc">ESC</span> Voltar
+            </a>
+            
+            <div class="header-titulo">
+                <h2><i class="fa-solid fa-address-book"></i> GESTÃO DE CONTAS (FIADO)</h2>
+            </div>
+            
+            <div class="header-acoes">
+                <button type="button" class="btn-acao-principal" onclick="abrirModal('modal-nova-conta')">
+                    <i class="fa-solid fa-plus"></i> Novo Cliente (F2)
+                </button>
+            </div>
+        </header>
+
+        <main class="painel-central">
+            <div class="lista-devedores" id="container-devedores">
+                <!-- Cards renderizados pelo JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL DE CRIAR CONTA VAZIA -->
+    <div id="modal-nova-conta" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 500px;">
+            <div class="modal-header-pdv">
+                <h2><i class="fa-solid fa-user-plus"></i> CADASTRAR CLIENTE (FIADO)</h2>
+            </div>
+
+            <div class="modal-body fiado-container" style="padding: 20px; background: #fff; text-align: left;">
+                
+                <div class="fiado-card">
+                    <p style="margin-bottom: 15px; font-size: 0.95rem; color: #64748b;">
+                        Cadastre o cliente aqui. Para adicionar produtos a esta conta, clique em <strong>"ABRIR NO CAIXA"</strong> após salvar.
+                    </p>
+
+                    <div class="input-pdv-config" style="margin-bottom: 15px;">
+                        <label>Nome do Cliente *</label>
+                        <input type="text" id="fiado-nome" placeholder="Ex: João da Silva" required>
+                    </div>
+
+                    <div class="form-linha">
+                        <div class="input-pdv-config">
+                            <label>CPF (Opcional)</label>
+                            <input type="text" id="fiado-cpf" placeholder="000.000.000-00">
+                        </div>
+                        <div class="input-pdv-config">
+                            <label>Telefone (Opcional)</label>
+                            <input type="text" id="fiado-telefone" placeholder="(00) 00000-0000">
+                        </div>
+                    </div>
+
+                    <div class="input-pdv-config" style="margin-bottom: 15px;">
+                        <label>Endereço (Opcional)</label>
+                        <input type="text" id="fiado-endereco" placeholder="Ex: Rua das Flores, 123">
+                    </div>
+
+                    <div class="form-linha">
+                        <div class="input-pdv-config">
+                            <label>Data de Abertura</label>
+                            <input type="text" id="fiado-data-compra" placeholder="DD/MM/AAAA">
+                        </div>
+                        <div class="input-pdv-config">
+                            <label>Previsão de Pagto</label>
+                            <input type="text" id="fiado-data-pagamento" placeholder="DD/MM/AAAA">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn-pdv-cancelar" onclick="fecharModal('modal-nova-conta')">CANCELAR (ESC)</button>
+                    <button class="btn-pdv-confirmar" onclick="salvarConta()">CRIAR CONTA (ENTER)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE RECEBER PAGAMENTO -->
+    <div id="modal-pagamento" class="modal-overlay">
+        <div class="modal-content pdv-modal" style="width: 450px;">
+            <div class="modal-header-pdv" style="background: #10b981;">
+                <h2><i class="fa-solid fa-hand-holding-dollar"></i> RECEBER PAGAMENTO</h2>
+            </div>
+            <div class="modal-body" style="padding: 20px; background: #fff;">
+                <p id="texto-confirmacao-pagamento" style="margin-bottom: 5px; font-size: 1.1rem; text-align: center; color: #003366; font-weight: bold;"></p>
+                <p style="text-align: center; color: #ef4444; font-weight: bold; font-size: 1.2rem; margin-bottom: 20px;">
+                    Falta Pagar: <span id="valor-devido-atual">R$ 0,00</span>
+                </p>
+
+                <div class="input-pdv-config" style="margin-bottom: 15px; text-align: left;">
+                    <label style="color: #10b981; font-weight: bold;">Valor Sendo Pago Agora (R$)</label>
+                    <input type="text" id="valor-pagando-agora" placeholder="0,00" style="text-align: center; font-size: 2rem; color: #10b981; font-weight: 900; border: 2px solid #10b981; background: #ecfdf5;">
+                </div>
+
+                <div class="input-pdv-config" style="margin-bottom: 20px; text-align: left;">
+                    <label>Data do Recebimento</label>
+                    <input type="text" id="data-baixa-pagamento" placeholder="DD/MM/AAAA" style="text-align: center; font-size: 1.2rem;">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-pdv-cancelar" onclick="fecharModal('modal-pagamento')">CANCELAR</button>
+                    <button class="btn-pdv-confirmar" id="btn-confirmar-baixa" style="background: #10b981;">SALVAR PAGAMENTO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="recibo-impressao"></div>
+
+    <script src="https://unpkg.com/imask"></script>
+    <script src="js/contas.js"></script>
+</body>
+</html>

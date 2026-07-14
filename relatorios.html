@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - Supermercado Marcão</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/relatorios.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    
+    <div class="relatorio-layout">
+        <header class="header-operacao">
+            <a href="index.html" class="btn-voltar" title="Voltar para o Menu Principal">
+                <span class="tecla-esc">ESC</span> Voltar
+            </a>
+            <div class="header-titulo">
+                <h2><i class="fa-solid fa-chart-pie"></i> RELATÓRIOS E FECHAMENTO DE CAIXA</h2>
+            </div>
+            <div class="operador"><i class="fa-solid fa-user-tie"></i> OP: Gerência</div>
+        </header>
+
+        <main class="painel-central">
+            
+            <div class="filtros-container">
+                <div class="filtro-grupo">
+                    <label><i class="fa-regular fa-calendar"></i> Data Inicial</label>
+                    <input type="date" id="filtro-data-ini">
+                </div>
+                <div class="filtro-grupo">
+                    <label><i class="fa-regular fa-calendar-check"></i> Data Final</label>
+                    <input type="date" id="filtro-data-fim">
+                </div>
+                <button class="btn-filtrar" onclick="aplicarFiltros()">
+                    <i class="fa-solid fa-filter"></i> Filtrar
+                </button>
+            </div>
+
+            <div class="display-valores-grid" style="margin-bottom: 20px;">
+                <div class="display-box">
+                    <span class="label">Vendas no Caixa</span>
+                    <span class="valor" id="resumo-vendas">R$ 0,00</span>
+                </div>
+                <div class="display-box">
+                    <span class="label">Contas Recebidas</span>
+                    <span class="valor" id="resumo-contas" style="color: #f59e0b;">R$ 0,00</span>
+                </div>
+                <div class="display-box destaque-total">
+                    <span class="label">Total Geral</span>
+                    <span class="valor" id="resumo-total">R$ 0,00</span>
+                </div>
+            </div>
+
+            <div class="grafico-container">
+                <canvas id="graficoVendas"></canvas>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Data/Hora</th>
+                            <th>Tipo</th>
+                            <th>Forma de Pgto</th>
+                            <th>Total (R$)</th>
+                            <th style="text-align: center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-relatorios">
+                        
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script src="js/relatorios.js"></script>
+</body>
+</html>

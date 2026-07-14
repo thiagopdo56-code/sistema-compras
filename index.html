@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Principal - Artes e Encantos</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <header class="top-navbar">
+            <div class="navbar-brand">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span>Artes e Encantos</span>
+            </div>
+            
+            <div class="date-time" id="current-date-time">
+                --/--/---- | --:--:--
+            </div>
+
+            <div class="navbar-user">
+                <span class="user-status"><i class="fa-solid fa-circle" style="color: #10b981;"></i> CAIXA ABERTO</span>
+                <span><i class="fa-solid fa-user-tie"></i> Gerência</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="page-header" style="text-align: center; margin-bottom: 50px;">
+                <h1 style="color: #ffffff; font-size: 2.5rem; text-transform: uppercase; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Menu Principal</h1>
+                <p style="color: #b3d4ff; font-size: 1.2rem;">Selecione o módulo ou use as teclas de atalho</p>
+            </div>
+
+            <section class="menu-grid">
+                
+                <a href="vendas.html" class="menu-square">
+                    <div class="tecla-atalho-tag">F1</div>
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span>Frente de Caixa</span>
+                    <p>(PDV)</p>
+                </a>
+
+                <a href="estoque.html" class="menu-square">
+                    <div class="tecla-atalho-tag">F2</div>
+                    <i class="fa-solid fa-box-open"></i>
+                    <span>Produtos</span>
+                    <p>(Estoque)</p>
+                </a>
+
+                <a href="contas.html" class="menu-square">
+                    <div class="tecla-atalho-tag">F3</div>
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>Fiado</span>
+                    <p>(Contas Clientes)</p>
+                </a>
+
+                <a href="relatorios.html" class="menu-square">
+                    <div class="tecla-atalho-tag">F4</div>
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Relatórios</span>
+                    <p>(Faturamento)</p>
+                </a>
+
+            </section>
+        </main>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

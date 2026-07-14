@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background-color: #003366; 
+    font-family: 'Inter', sans-serif;
+    color: #333;
+}
+
+.relatorio-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 20px;
+    gap: 20px;
+}
+
+.header-operacao {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #ffffff; padding: 15px 20px; border-radius: 8px;
+    font-weight: 800; font-size: 1.2rem; color: #003366;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.btn-voltar {
+    background: #0055A4; color: #fff; text-decoration: none;
+    padding: 8px 15px; border-radius: 6px; font-size: 1rem; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; transition: 0.2s;
+}
+.btn-voltar:hover { background: #003366; }
+.tecla-esc { background: #002244; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; border: 1px solid #b3d4ff;}
+.operador { color: #0055A4; }
+
+.painel-central {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    border: 4px solid #0055A4;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.filtros-container {
+    display: flex;
+    gap: 15px;
+    background: #f0f8ff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #b3d4ff;
+    align-items: flex-end;
+}
+
+.filtro-grupo { display: flex; flex-direction: column; gap: 5px; }
+.filtro-grupo label { font-size: 1rem; font-weight: bold; color: #0055A4; }
+.filtro-grupo input {
+    padding: 10px; border: 2px solid #b3d4ff; border-radius: 6px;
+    font-size: 1rem; color: #003366; outline: none; font-weight: bold;
+}
+
+.btn-filtrar {
+    background: #10b981; color: white; border: none; padding: 10px 20px;
+    border-radius: 6px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+    transition: 0.2s; height: 44px;
+}
+.btn-filtrar:hover { background: #059669; }
+
+.display-valores-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+
+.display-box {
+    background: #f0f8ff; padding: 20px; border-radius: 8px; border: 2px solid #b3d4ff;
+    display: flex; flex-direction: column; align-items: center;
+}
+.display-box .label { font-size: 1.1rem; color: #0055A4; text-transform: uppercase; font-weight: 800; margin-bottom: 5px; }
+.display-box .valor { font-size: 2.2rem; font-weight: 900; color: #003366; }
+
+.display-box.destaque-total { background: #0055A4; border-color: #003366; }
+.display-box.destaque-total .label, .display-box.destaque-total .valor { color: #ffffff; }
+
+.grafico-container {
+    position: relative; height: 250px; width: 100%;
+    background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px;
+}
+
+.table-container { flex: 1; overflow-y: auto; border: 2px solid #cbd5e1; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+thead { background: #0055A4; color: white; position: sticky; top: 0; }
+th { padding: 12px; font-weight: bold; }
+td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 1.1rem; color: #003366; font-weight: 600; }
+tbody tr:hover { background: #f0f8ff; }
+
+.acoes-cell { display: flex; gap: 8px; justify-content: center; }
+.btn-icon {
+    width: 35px; height: 35px; border-radius: 6px; border: none;
+    color: white; font-size: 1rem; cursor: pointer; transition: 0.2s;
+    display: flex; align-items: center; justify-content: center;
+}
+.btn-icon.edit { background: #3b82f6; }
+.btn-icon.edit:hover { background: #2563eb; }
+.btn-icon.delete { background: #ef4444; }
+.btn-icon.delete:hover { background: #dc2626; }
+
+/* ======================================================== */
+/* AJUSTES PARA O MONITOR QUADRADO (1024x768) E TELAS MENORES */
+/* ======================================================== */
+@media (max-width: 1024px), (max-height: 768px) {
+    .relatorio-layout {
+        padding: 10px; /* Reduz espaço inútil nas bordas */
+        gap: 10px;     /* Reduz espaço entre o topo e o painel */
+    }
+    
+    .header-operacao {
+        padding: 10px 15px;
+        font-size: 1.1rem;
+    }
+
+    .painel-central {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .filtros-container {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .filtro-grupo input {
+        padding: 8px;
+        font-size: 0.95rem;
+    }
+
+    .btn-filtrar {
+        height: 40px;
+        padding: 5px 15px;
+        font-size: 1rem;
+    }
+
+    .display-valores-grid {
+        gap: 10px;
+    }
+
+    .display-box {
+        padding: 12px; /* Afina os blocos de display numérico */
+    }
+
+    .display-box .label {
+        font-size: 0.9rem;
+    }
+
+    .display-box .valor {
+        font-size: 1.6rem; /* Diminui o número gigante para não quebrar */
+    }
+
+    .grafico-container {
+        height: 160px; /* Fundamental: gráfico menor na altura para a tabela conseguir respirar */
+    }
+
+    th, td {
+        padding: 8px; /* Tabela mais compacta */
+        font-size: 0.95rem;
+    }
+
+    .btn-icon {
+        width: 30px;
+        height: 30px;
+    }
+}

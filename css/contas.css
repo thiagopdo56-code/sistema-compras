@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Inter:wght@400;600;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background-color: #003366; 
+    font-family: 'Inter', sans-serif;
+    color: #003366;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.contas-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 20px;
+    gap: 20px;
+}
+
+/* ================= HEADER ================= */
+.header-operacao {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #ffffff; padding: 15px 20px; border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.btn-voltar {
+    background: #0055A4; color: #fff; text-decoration: none;
+    padding: 8px 15px; border-radius: 6px; font-size: 1rem; font-weight: 800;
+    display: flex; align-items: center; gap: 8px; transition: 0.2s;
+}
+.btn-voltar:hover { background: #003366; }
+.tecla-esc { background: #002244; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; border: 1px solid #b3d4ff;}
+
+.header-titulo h2 { font-size: 1.5rem; font-weight: 900; color: #003366; margin: 0;}
+
+.btn-acao-principal {
+    background: #10b981; color: white; border: none;
+    padding: 12px 20px; font-size: 1.1rem; font-weight: 800;
+    border-radius: 6px; cursor: pointer; transition: 0.2s;
+}
+.btn-acao-principal:hover { background: #059669; }
+
+/* ================= PAINEL CENTRAL ================= */
+.painel-central {
+    background: #ffffff;
+    flex: 1;
+    border-radius: 12px;
+    border: 4px solid #0055A4;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* ================= LISTA DE DEVEDORES ================= */
+.lista-devedores {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.devedor-card {
+    background: #f0f8ff;
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #b3d4ff;
+    border-left: 6px solid #f59e0b;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: 0.2s;
+}
+.devedor-card:hover { border-color: #0055A4; transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+
+.devedor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #b3d4ff;
+    padding-bottom: 10px;
+}
+.devedor-header h3 { font-size: 1.2rem; color: #003366; margin: 0; font-weight: 900; }
+.devedor-total { font-size: 1.2rem; font-weight: 900; color: #ef4444; white-space: nowrap; margin-left: 10px; }
+
+.devedor-info {
+    font-size: 1rem;
+    color: #0055A4;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.btn-pagar-conta {
+    width: 100%; background: #ffffff; color: #0055A4; border: 2px solid #0055A4;
+    padding: 10px; border-radius: 6px; font-weight: 800; font-size: 1rem;
+    cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-pagar-conta:hover { background: #0055A4; color: #fff; }
+
+/* ================= MODAIS ================= */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 34, 68, 0.85); display: none; justify-content: center; align-items: center; z-index: 9999;
+}
+.modal-overlay.active { display: flex; }
+
+.pdv-modal { background: #ffffff; border: 4px solid #0055A4; border-radius: 12px; padding: 0; overflow: hidden; }
+.modal-header-pdv { background: #003366; padding: 20px; color: white; text-align: center;}
+.modal-header-pdv h2 { font-size: 1.5rem; margin: 0; }
+
+.form-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+.fiado-container { display: flex; flex-direction: column; gap: 10px; }
+.fiado-card { background: #f0f8ff; padding: 20px; border-radius: 8px; border: 2px solid #b3d4ff; width: 100%; }
+
+/* INPUTS MODAL */
+.input-pdv-config { display: flex; flex-direction: column; gap: 5px; }
+.input-pdv-config label { font-size: 1rem; font-weight: bold; color: #0055A4; }
+.input-pdv-config input {
+    padding: 12px; border: 2px solid #b3d4ff; border-radius: 6px; font-size: 1.1rem;
+    font-weight: 600; color: #003366; outline: none; background: #ffffff; width: 100%; box-sizing: border-box;
+}
+.input-pdv-config input:focus { border-color: #0055A4; }
+
+/* BOTÕES CONFIRMAR/CANCELAR */
+.btn-pdv-confirmar { flex: 1; background: #0055A4; color: white; border: none; padding: 15px; font-size: 1.1rem; font-weight: 900; cursor: pointer; border-radius: 6px; transition: 0.2s;}
+.btn-pdv-confirmar:hover { background: #003366; }
+.btn-pdv-cancelar { flex: 1; background: #f1f5f9; color: #003366; border: 2px solid #b3d4ff; padding: 15px; font-size: 1.1rem; font-weight: 900; cursor: pointer; border-radius: 6px; transition: 0.2s;}
+.btn-pdv-cancelar:hover { background: #e2e8f0; }
+
+/* IMPRESSÃO IGUAL A VENDAS */
+#recibo-impressao { display: none; }
+@media print {
+    body * { visibility: hidden; }
+    .contas-layout { display: none !important; }
+    #recibo-impressao, #recibo-impressao * { visibility: visible; }
+    #recibo-impressao {
+        display: block !important;
+        position: absolute; left: 0; top: 0;
+        width: 58mm;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 12px; color: #000;
+    }
+}
