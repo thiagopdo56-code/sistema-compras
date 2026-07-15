@@ -21,7 +21,8 @@ let formaPagamentoAtual = "Dinheiro";
 let multiplicadorAtual = 1; 
 let contaFiadoOriginal_id = null; 
 let cpfNotaAtual = ""; 
-let cnpjNotaAtual = ""; // <--- ADICIONE ESTA LINHA AQUI
+let cnpjNotaAtual = ""; 
+let nomeLojaCnpjAtual = "";
 
 let pagamentosCaixa = [];
 let valorFaltanteMisto = 0;
@@ -41,11 +42,16 @@ let todasContasF4 = [];
 let contasFiltradasF4 = [];
 let indiceContaF4 = -1;
 
-// Variáveis para o modal de variações de produto e avulsos cadastrados
+// Variáveis de Modais Dinâmicos
 let produtoAguardandoVariacao = null;
 let indiceVariacaoSelecionada = 0;
 let avulsosCadastrados = [];
+let avulsosCadastradosFiltrados = [];
 let indiceAvulsoSelecionado = 0;
+let avulsoPendenteParaQuantidade = null; // Armazena o avulso antes de pedir a quantidade
+
+let produtosPesquisaF2 = [];
+let indicePesquisaF2 = -1;
 
 let taxasMaquininha = JSON.parse(localStorage.getItem("taxasMaquininha")) || { credito: 0, debito: 0, pix: 0 };
 let configImpressora = JSON.parse(localStorage.getItem("configImpressora")) || { 
@@ -53,11 +59,12 @@ let configImpressora = JSON.parse(localStorage.getItem("configImpressora")) || {
 };
 
 // =====================================================================
-// INTEGRAÇÃO DE LETRAS MAIÚSCULAS UNIVERSAL E CONFIGURAÇÕES
+// INICIALIZAÇÃO
 // =====================================================================
 document.addEventListener("DOMContentLoaded", async () => {
     forcarLetrasMaiusculas();
-    injetarModaisAvulsoDinamicos(); // Injeta os novos modais do F8 automaticamente na tela
+    injetarModaisAvulsoDinamicos(); 
+    injetarModalPesquisaProdutos(); // Adicionado para injetar o novo modal do F2
 
     const campoNomeFiado = document.getElementById("novofiado-nome");
     const campoNascFiado = document.getElementById("novofiado-nascimento");
@@ -66,6 +73,26 @@ document.addEventListener("DOMContentLoaded", async () => {
             verificarAniversarioCadastro(this.value, campoNomeFiado ? campoNomeFiado.value : "");
         });
     }
+
+    // Monitora a pesquisa global de produtos e avulsos
+    document.body.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'pesquisa-avulso-f8') {
+            const termo = e.target.value.toLowerCase();
+            avulsosCadastradosFiltrados = avulsosCadastrados.filter(p => p.nome.toLowerCase().includes(termo));
+            indiceAvulsoSelecionado = avulsosCadastradosFiltrados.length > 0 ? 0 : -1;
+            renderizarListaAvulsosCadastrados();
+        }
+        if (e.target && e.target.id === 'input-pesquisa-global') {
+            const termo = e.target.value.toLowerCase();
+            if (termo.trim() === "") {
+                produtosPesquisaF2 = produtosDoBanco.slice(0, 50);
+            } else {
+                produtosPesquisaF2 = produtosDoBanco.filter(p => p.nome.toLowerCase().includes(termo) || (p.codigo_barras && String(p.codigo_barras).includes(termo))).slice(0, 50);
+            }
+            indicePesquisaF2 = produtosPesquisaF2.length > 0 ? 0 : -1;
+            renderizarListaPesquisaF2();
+        }
+    });
 });
 
 function forcarLetrasMaiusculas() {
@@ -86,7 +113,7 @@ function forcarLetrasMaiusculas() {
 }
 
 // =====================================================================
-// INJEÇÃO DINÂMICA DOS NOVOS MODAIS DE AVULSO (SEM MEXER NO HTML)
+// INJEÇÃO DINÂMICA (F8 E F2)
 // =====================================================================
 function injetarModaisAvulsoDinamicos() {
     if (!document.getElementById("modal-escolha-avulso")) {
@@ -118,10 +145,11 @@ function injetarModaisAvulsoDinamicos() {
         modalLista.id = "modal-lista-avulsos-banco";
         modalLista.className = "modal-overlay";
         modalLista.innerHTML = `
-            <div class="modal-content" style="max-width: 550px; text-align: left; border: 3px solid #0055A4; border-radius: 12px; padding: 25px; background: #fff;">
+            <div class="modal-content" style="max-width: 800px; text-align: left; border: 3px solid #0055A4; border-radius: 12px; padding: 25px; background: #fff;">
                 <h3 style="color: #0055A4; margin-top: 0; text-align: center; font-size: 1.4rem;"><i class="fa-solid fa-boxes-stacked"></i> AVULSOS CADASTRADOS</h3>
+                <input type="text" id="pesquisa-avulso-f8" placeholder="Pesquisar avulso cadastrado..." style="width: 100%; padding: 12px; font-size: 1.2rem; border: 2px solid #b3d4ff; border-radius: 8px; margin-bottom: 15px; text-transform: uppercase;">
                 <p style="color: #64748b; font-size: 0.9rem; text-align: center; margin-bottom: 15px;">Use as setas para navegar e ENTER para selecionar:</p>
-                <div id="container-lista-avulsos-banco" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
+                <div id="container-lista-avulsos-banco" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
                 <button type="button" onclick="fecharModal('modal-lista-avulsos-banco')" style="margin-top: 20px; background: #ef4444; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">VOLTAR (ESC)</button>
             </div>
         `;
@@ -129,8 +157,26 @@ function injetarModaisAvulsoDinamicos() {
     }
 }
 
+function injetarModalPesquisaProdutos() {
+    if (!document.getElementById("modal-pesquisa-produtos")) {
+        const modalPesquisa = document.createElement("div");
+        modalPesquisa.id = "modal-pesquisa-produtos";
+        modalPesquisa.className = "modal-overlay";
+        modalPesquisa.innerHTML = `
+            <div class="modal-content" style="max-width: 800px; text-align: left; border: 3px solid #0055A4; border-radius: 12px; padding: 25px; background: #fff;">
+                <h3 style="color: #0055A4; margin-top: 0; text-align: center; font-size: 1.4rem;"><i class="fa-solid fa-search"></i> PESQUISAR PRODUTO GERAL (F2)</h3>
+                <input type="text" id="input-pesquisa-global" placeholder="Digite o nome ou código de barras do produto..." style="width: 100%; padding: 12px; font-size: 1.2rem; border: 2px solid #b3d4ff; border-radius: 8px; margin-bottom: 15px; text-transform: uppercase;">
+                <p style="color: #64748b; font-size: 0.9rem; text-align: center; margin-bottom: 15px;">Use as setas para navegar e ENTER para adicionar ao carrinho.</p>
+                <div id="container-lista-pesquisa-global" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
+                <button type="button" onclick="fecharModal('modal-pesquisa-produtos')" style="margin-top: 20px; background: #ef4444; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">VOLTAR (ESC)</button>
+            </div>
+        `;
+        document.body.appendChild(modalPesquisa);
+    }
+}
+
 // =====================================================================
-// BAIXA AUTOMÁTICA DE ESTOQUE AO FINALIZAR VENDA
+// BAIXA AUTOMÁTICA DE ESTOQUE
 // =====================================================================
 async function finalizarVendaReal(imprimir) {
     let nomePagamento = pagamentosCaixa.length === 1 ? pagamentosCaixa[0].forma : "Misto";
@@ -170,25 +216,21 @@ async function finalizarVendaReal(imprimir) {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(prodLocal)
-                    }).catch(() => console.warn('Falha ao atualizar o estoque local do produto.'));
+                    }).catch(() => console.warn('Falha ao atualizar o estoque.'));
                 }
             }
         }
 
         if (vendaEditandoId) {
             await db.collection("vendas").doc(vendaEditandoId).set(vendaObj);
-        } else {
-            await db.collection("vendas").add(vendaObj);
-        }
-
-        if (vendaEditandoId) {
             await fetch(`http://localhost:3000/api/vendas/${vendaEditandoId}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vendaObj)
-            }).catch(() => console.log('Servidor local para vendas offline.'));
+            }).catch(() => console.log('Offline server'));
         } else {
+            await db.collection("vendas").add(vendaObj);
             await fetch('http://localhost:3000/api/vendas', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vendaObj)
-            }).catch(() => console.log('Servidor local para vendas offline.'));
+            }).catch(() => console.log('Offline server'));
         }
 
         if (contaFiadoOriginal_id) {
@@ -207,13 +249,10 @@ async function finalizarVendaReal(imprimir) {
             }
         }
     } catch(e) { 
-        console.warn("Erro ao salvar!", e);
         alert("Erro de conexão ao salvar a venda.");
     }
 
-    if(imprimir === true) {
-        imprimirNotinha();
-    }
+    if(imprimir === true) { imprimirNotinha(); }
 
     fecharModal('modal-confirmar-impressao');
     fecharModal('modal-pagamento');
@@ -260,28 +299,72 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    // =========================================================
+    // CONTROLE GLOBAL DE TECLADO (ESC, ENTER E ATALHOS)
+    // =========================================================
     document.addEventListener("keydown", (e) => {
         const modalImpressaoAberto = document.getElementById('modal-confirmar-impressao').classList.contains('active');
-        if (modalImpressaoAberto) {
-            if (e.key === "F1") { e.preventDefault(); confirmarVendaComImpressao(true); }
-            if (e.key === "F2") { e.preventDefault(); confirmarVendaComImpressao(false); }
-            if (e.key === "Escape") { e.preventDefault(); fecharModal('modal-confirmar-impressao'); }
+        const modalAtivo = document.querySelector('.modal-overlay.active');
+
+        // PRIORIDADE 1: O BOTÃO ESCAPE (FECHAR TUDO / LIMPAR)
+        if (e.key === "Escape") {
+            e.preventDefault();
+            if (modalImpressaoAberto) {
+                fecharModal('modal-confirmar-impressao');
+            } else if (modalAtivo) {
+                document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+                setTimeout(() => document.getElementById("venda-barras").focus(), 50); // Garante retorno ao leitor
+            } else if (modoCarrinho) {
+                modoCarrinho = false;
+                indiceCarrinhoSelecionado = -1;
+                atualizarTela();
+                document.getElementById("venda-barras").focus();
+            } else {
+                window.location.href = "index.html";
+            }
             return; 
         }
 
-        const modalAtivo = document.querySelector('.modal-overlay.active');
+        if (modalImpressaoAberto) {
+            if (e.key === "F1") { e.preventDefault(); confirmarVendaComImpressao(true); }
+            if (e.key === "F2") { e.preventDefault(); confirmarVendaComImpressao(false); }
+            return; 
+        }
 
-        // ATALHOS MODAL DE ESCOLHA AVULSO
+        // TRAVA DO ENTER NOS MODAIS PRA NÃO DISPARAR O LEITOR
+        if (e.key === "Enter" && modalAtivo) {
+            if (modalAtivo.id === 'modal-quantidade') { e.preventDefault(); confirmarQuantidade(); return; }
+            if (modalAtivo.id === 'modal-cpf') { e.preventDefault(); confirmarCPF(); return; }
+            if (modalAtivo.id === 'modal-cadastrar-fiado') { e.preventDefault(); salvarNovoFiadoNoPDV(); return; }
+            if (modalAtivo.id === 'modal-cnpj') { e.preventDefault(); confirmarCNPJ(); return; }
+        }
+
+        // NAVEGAÇÃO PESQUISA F2 (GLOBAL)
+        if (modalAtivo && modalAtivo.id === 'modal-pesquisa-produtos') {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (indicePesquisaF2 < produtosPesquisaF2.length - 1) { indicePesquisaF2++; renderizarListaPesquisaF2(); }
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                if (indicePesquisaF2 > 0) { indicePesquisaF2--; renderizarListaPesquisaF2(); }
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (produtosPesquisaF2.length > 0) selecionarProdutoF2(indicePesquisaF2);
+            }
+            return;
+        }
+
+        // NAVEGAÇÃO MODAL DE ESCOLHA AVULSO (F8 INICIAL)
         if (modalAtivo && modalAtivo.id === 'modal-escolha-avulso') {
             if (e.key === "1" || e.key === "F1") { e.preventDefault(); abrirListaAvulsosCadastrados(); return; }
             if (e.key === "2" || e.key === "F2") { e.preventDefault(); abrirModalAvulsoNaHora(); return; }
         }
 
-        // ATALHOS MODAL LISTA DE AVULSOS CADASTRADOS
+        // NAVEGAÇÃO MODAL LISTA DE AVULSOS CADASTRADOS (F8 -> 1)
         if (modalAtivo && modalAtivo.id === 'modal-lista-avulsos-banco') {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                if (indiceAvulsoSelecionado < avulsosCadastrados.length - 1) {
+                if (indiceAvulsoSelecionado < avulsosCadastradosFiltrados.length - 1) {
                     indiceAvulsoSelecionado++;
                     renderizarListaAvulsosCadastrados();
                 }
@@ -293,82 +376,61 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             } else if (e.key === "Enter") {
                 e.preventDefault();
-                if (avulsosCadastrados.length > 0) {
+                if (avulsosCadastradosFiltrados.length > 0) {
                     selecionarAvulsoCadastrado(indiceAvulsoSelecionado);
                 }
             }
             return;
         }
 
-        // ATALHOS MODAL DE VARIAÇÕES
+        // OUTROS MODAIS
         if (modalAtivo && modalAtivo.id === 'modal-variacoes') {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 if (indiceVariacaoSelecionada < produtoAguardandoVariacao.variacoes.length - 1) {
-                    indiceVariacaoSelecionada++;
-                    renderizarListaVariacoes();
+                    indiceVariacaoSelecionada++; renderizarListaVariacoes();
                 }
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 if (indiceVariacaoSelecionada > 0) {
-                    indiceVariacaoSelecionada--;
-                    renderizarListaVariacoes();
+                    indiceVariacaoSelecionada--; renderizarListaVariacoes();
                 }
             } else if (e.key === "Enter") {
-                e.preventDefault();
-                confirmarVariacao(indiceVariacaoSelecionada);
+                e.preventDefault(); confirmarVariacao(indiceVariacaoSelecionada);
             }
+            return;
         }
 
         if (modalAtivo && modalAtivo.id === 'modal-selecionar-conta') {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                if (indiceContaF4 < contasFiltradasF4.length - 1) {
-                    indiceContaF4++;
-                    atualizarEstilosF4();
-                }
+                if (indiceContaF4 < contasFiltradasF4.length - 1) { indiceContaF4++; atualizarEstilosF4(); }
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                if (indiceContaF4 > 0) {
-                    indiceContaF4--;
-                    atualizarEstilosF4();
-                }
-            } else if (e.key === "Enter") {
-                if (document.activeElement.tagName !== 'BUTTON' || document.activeElement.classList.contains('btn-conta-f4')) {
-                    e.preventDefault();
-                    if (indiceContaF4 >= 0 && contasFiltradasF4.length > 0) {
-                        const c = contasFiltradasF4[indiceContaF4];
-                        processarFiadoExistente(c.id, c.cliente);
-                    }
+                if (indiceContaF4 > 0) { indiceContaF4--; atualizarEstilosF4(); }
+            } else if (e.key === "Enter" && (!document.activeElement || !document.activeElement.classList.contains('btn-conta-f4'))) {
+                e.preventDefault();
+                if (indiceContaF4 >= 0 && contasFiltradasF4.length > 0) {
+                    const c = contasFiltradasF4[indiceContaF4];
+                    processarFiadoExistente(c.id, c.cliente);
                 }
             }
+            return;
         }
 
         if (modalAtivo && modalAtivo.id === 'modal-venda-peso') {
             const passo1Ativo = document.getElementById('passo-1-peso').style.display !== 'none';
             if (passo1Ativo) {
-                if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    if (indicePesoSelecionado < produtosPorPeso.length - 1) indicePesoSelecionado++;
-                    renderizarListaVendaPeso();
-                }
-                if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    if (indicePesoSelecionado > 0) indicePesoSelecionado--;
-                    renderizarListaVendaPeso();
-                }
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    selecionarProdutoPesoParaVenda(indicePesoSelecionado);
-                }
+                if (e.key === "ArrowDown") { e.preventDefault(); if (indicePesoSelecionado < produtosPorPeso.length - 1) indicePesoSelecionado++; renderizarListaVendaPeso(); }
+                if (e.key === "ArrowUp") { e.preventDefault(); if (indicePesoSelecionado > 0) indicePesoSelecionado--; renderizarListaVendaPeso(); }
+                if (e.key === "Enter") { e.preventDefault(); selecionarProdutoPesoParaVenda(indicePesoSelecionado); }
             } else {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    confirmarVendaPeso();
-                }
+                if (e.key === "Enter") { e.preventDefault(); confirmarVendaPeso(); }
             }
+            return;
         }
 
+        // NAVEGAÇÃO CARRINHO (TAB)
         if (e.key === "Tab" && !modalAtivo) {
             e.preventDefault();
             if (carrinho.length > 0) {
@@ -382,46 +444,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (modoCarrinho && !modalAtivo) {
-            if (e.key === "ArrowDown") {
-                e.preventDefault();
-                if (indiceCarrinhoSelecionado < carrinho.length - 1) indiceCarrinhoSelecionado++;
-                atualizarTela();
-            }
-            if (e.key === "ArrowUp") {
-                e.preventDefault();
-                if (indiceCarrinhoSelecionado > 0) indiceCarrinhoSelecionado--;
-                atualizarTela();
-            }
-            if (e.key === "Delete") {
-                e.preventDefault();
-                removerItemDoCarrinho();
-            }
-            if (e.key === "Escape") {
-                modoCarrinho = false;
-                indiceCarrinhoSelecionado = -1;
-                atualizarTela();
-                document.getElementById("venda-barras").focus();
-            }
+            if (e.key === "ArrowDown") { e.preventDefault(); if (indiceCarrinhoSelecionado < carrinho.length - 1) indiceCarrinhoSelecionado++; atualizarTela(); }
+            if (e.key === "ArrowUp") { e.preventDefault(); if (indiceCarrinhoSelecionado > 0) indiceCarrinhoSelecionado--; atualizarTela(); }
+            if (e.key === "Delete") { e.preventDefault(); removerItemDoCarrinho(); }
             return; 
         }
 
-        if (e.key === "Escape") {
-            if (modalAtivo) {
-                document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
-                document.getElementById("venda-barras").focus();
-            } else window.location.href = "index.html";
-        }
+        if (["F1", "F2", "F3", "F4", "F7", "F8", "F9", "F12"].includes(e.key)) e.preventDefault();
 
-// Antes estava sem o "F1"
-if (["F1", "F2", "F3", "F4", "F7", "F8", "F9", "F12"].includes(e.key)) e.preventDefault();
-
+        // ATALHOS CAIXA LIVRE
         if (!modalAtivo && !modoCarrinho) {
-            if (e.key === "F1") abrirModalCNPJ(); // <--- ADICIONE AQUI
+            if (e.key === "F1") abrirModalCNPJ(); 
             if (e.key === "F2") abrirPesquisa();
             if (e.key === "F3") abrirQuantidade();
             if (e.key === "F4") abrirModalContas();
             if (e.key === "F7") abrirModalCPF();
-            if (e.key === "F8") abrirEscolhaAvulso(); // Modificado para o novo menu de escolha
+            if (e.key === "F8") abrirEscolhaAvulso(); 
             if (e.key === "F9") abrirModalVendaPeso();
             if (e.key === "F12") abrirPagamento();
             if (e.key === "Delete") cancelarVenda(); 
@@ -432,11 +470,6 @@ if (["F1", "F2", "F3", "F4", "F7", "F8", "F9", "F12"].includes(e.key)) e.prevent
             if (e.key === "F2") selecionarFormaPagamento('Cartão');
             if (e.key === "F3") selecionarFormaPagamento('PIX');
         }
-
-        if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-quantidade') confirmarQuantidade();
-        if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-cpf') confirmarCPF();
-        if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-cadastrar-fiado') salvarNovoFiadoNoPDV();
-if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-cnpj') confirmarCNPJ();
     });
 });
 
@@ -552,10 +585,7 @@ function configurarMascaras() {
         if (!inputElement) return;
         inputElement.addEventListener('input', function(e) {
             let valor = this.value.replace(/\D/g, ''); 
-            if (valor === '') {
-                this.value = '';
-                return;
-            }
+            if (valor === '') { this.value = ''; return; }
             valor = (parseInt(valor, 10) / 100).toFixed(2);
             valor = valor.replace('.', ',');
             valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
@@ -570,10 +600,7 @@ function configurarMascaras() {
     if (inputPesoKg) {
         inputPesoKg.addEventListener('input', function(e) {
             let valor = this.value.replace(/\D/g, ''); 
-            if (valor === '') {
-                this.value = '';
-                return;
-            }
+            if (valor === '') { this.value = ''; return; }
             valor = parseInt(valor, 10).toString().padStart(4, '0');
             let inteiro = valor.slice(0, -3);
             let decimal = valor.slice(-3);
@@ -583,8 +610,7 @@ function configurarMascaras() {
 
     if(document.getElementById('input-cpf-modal')) IMask(document.getElementById('input-cpf-modal'), { mask: '000.000.000-00' });
     if(document.getElementById('novofiado-cpf')) IMask(document.getElementById('novofiado-cpf'), { mask: '000.000.000-00' });
-    // Adicione esta linha junto com a máscara do CPF
-if(document.getElementById('input-cnpj-modal')) IMask(document.getElementById('input-cnpj-modal'), { mask: '00.000.000/0000-00' });
+    if(document.getElementById('input-cnpj-modal')) IMask(document.getElementById('input-cnpj-modal'), { mask: '00.000.000/0000-00' });
     if(document.getElementById('novofiado-telefone')) IMask(document.getElementById('novofiado-telefone'), { mask: '(00) 00000-0000' });
 }
 
@@ -598,10 +624,54 @@ function aplicarConfiguracoesNaTela() {
 function fecharModal(id) { 
     const el = document.getElementById(id);
     if(el) el.classList.remove('active'); 
-    document.getElementById("venda-barras").focus();
+    setTimeout(() => { document.getElementById("venda-barras").focus(); }, 50);
 }
 
-function abrirPesquisa() { alert("Tela de pesquisa de produtos será implementada em breve."); }
+// =====================================================================
+// NOVA PESQUISA GLOBAL (F2)
+// =====================================================================
+function abrirPesquisa() {
+    document.getElementById('modal-pesquisa-produtos').classList.add('active');
+    const inputPesquisa = document.getElementById('input-pesquisa-global');
+    inputPesquisa.value = '';
+    
+    produtosPesquisaF2 = produtosDoBanco.slice(0, 50); // Mostrar 50 primeiros de início
+    indicePesquisaF2 = produtosPesquisaF2.length > 0 ? 0 : -1;
+    
+    renderizarListaPesquisaF2();
+    setTimeout(() => inputPesquisa.focus(), 100);
+}
+
+function renderizarListaPesquisaF2() {
+    const container = document.getElementById("container-lista-pesquisa-global");
+    container.innerHTML = "";
+    
+    if (produtosPesquisaF2.length === 0) {
+        container.innerHTML = "<p style='text-align: center; color: #ef4444; font-weight: bold; padding: 20px;'>Nenhum produto encontrado com essa pesquisa.</p>";
+        return;
+    }
+
+    produtosPesquisaF2.forEach((prod, index) => {
+        let selecionadoStyle = index === indicePesquisaF2 ? "background: #0055A4; color: white;" : "background: #f0f8ff; color: #003366;";
+        let precoStyle = index === indicePesquisaF2 ? "white" : "#10b981";
+        
+        container.innerHTML += `
+            <button type="button" onclick="selecionarProdutoF2(${index})" style="${selecionadoStyle} padding: 14px; border: 2px solid #b3d4ff; border-radius: 8px; font-size: 1.1rem; font-weight: bold; text-align: left; cursor: pointer; transition: 0.1s; display: flex; justify-content: space-between; align-items: center;">
+                <span>${prod.nome} <small style="font-weight:normal; opacity:0.8;">(${prod.codigo_barras || 'Sem código'})</small></span>
+                <span style="color: ${precoStyle}; font-weight: 900;">R$ ${parseFloat(prod.preco || 0).toFixed(2).replace('.',',')}</span>
+            </button>
+        `;
+    });
+
+    const btnAtivo = container.children[indicePesquisaF2];
+    if (btnAtivo) btnAtivo.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function selecionarProdutoF2(index) {
+    const escolhido = produtosPesquisaF2[index];
+    fecharModal("modal-pesquisa-produtos");
+    adicionarProduto(escolhido.codigo_barras);
+}
 
 function abrirConfigPeso() {
     idEditandoPeso = null; 
@@ -743,7 +813,7 @@ function confirmarVendaPeso() {
 }
 
 // =====================================================================
-// NOVAS FUNÇÕES PARA OS PRODUTOS AVULSOS (F8)
+// PRODUTOS AVULSOS (F8)
 // =====================================================================
 function abrirEscolhaAvulso() {
     document.getElementById("modal-escolha-avulso").classList.add("active");
@@ -754,30 +824,40 @@ function abrirListaAvulsosCadastrados() {
     avulsosCadastrados = produtosDoBanco.filter(p => 
         (p.codigo_barras && String(p.codigo_barras).startsWith('AVULSO-')) || 
         p.categoria === 'AVULSOS' || 
-        (p.nome && p.nome.includes('(AVULSO)'))
+        (p.nome && p.nome.includes('AVULSO'))
     );
-
+    
+    avulsosCadastradosFiltrados = [...avulsosCadastrados];
     indiceAvulsoSelecionado = 0;
     renderizarListaAvulsosCadastrados();
+    
     document.getElementById("modal-lista-avulsos-banco").classList.add("active");
+    
+    setTimeout(() => {
+        const inputF8 = document.getElementById("pesquisa-avulso-f8");
+        if (inputF8) { inputF8.value = ""; inputF8.focus(); }
+    }, 100);
 }
 
 function renderizarListaAvulsosCadastrados() {
     const container = document.getElementById("container-lista-avulsos-banco");
     container.innerHTML = "";
 
-    if (avulsosCadastrados.length === 0) {
-        container.innerHTML = `<p style="text-align: center; color: #ef4444; font-weight: bold; padding: 20px;">Nenhum produto avulso cadastrado no estoque ainda.<br>Use a opção "Digitar na Hora" para cadastrar o primeiro!</p>`;
+    if (avulsosCadastradosFiltrados.length === 0) {
+        container.innerHTML = `<p style="text-align: center; color: #ef4444; font-weight: bold; padding: 20px;">Nenhum avulso encontrado na pesquisa ou sem estoque.</p>`;
         return;
     }
 
-    avulsosCadastrados.forEach((prod, index) => {
+    avulsosCadastradosFiltrados.forEach((prod, index) => {
         let selecionadoStyle = index === indiceAvulsoSelecionado ? "background: #0055A4; color: white;" : "background: #f0f8ff; color: #003366;";
         let precoStyle = index === indiceAvulsoSelecionado ? "white" : "#10b981";
         
+        // Remove limpa a palavra (AVULSO) para mostrar bonitinho
+        let nomeLimpo = prod.nome.replace(/\(AVULSO\)\s*/g, '').trim();
+
         container.innerHTML += `
             <button type="button" onclick="selecionarAvulsoCadastrado(${index})" style="${selecionadoStyle} padding: 14px; border: 2px solid #b3d4ff; border-radius: 8px; font-size: 1.1rem; font-weight: bold; text-align: left; cursor: pointer; transition: 0.1s; display: flex; justify-content: space-between; align-items: center;">
-                <span><i class="fa-solid fa-tag" style="margin-right: 8px;"></i> ${prod.nome}</span>
+                <span><i class="fa-solid fa-tag" style="margin-right: 8px;"></i> ${nomeLimpo}</span>
                 <span style="color: ${precoStyle}; font-weight: 900;">R$ ${parseFloat(prod.preco || 0).toFixed(2).replace('.',',')}</span>
             </button>
         `;
@@ -788,9 +868,12 @@ function renderizarListaAvulsosCadastrados() {
 }
 
 function selecionarAvulsoCadastrado(index) {
-    const escolhido = avulsosCadastrados[index];
+    const escolhido = avulsosCadastradosFiltrados[index];
     fecharModal("modal-lista-avulsos-banco");
-    adicionarProduto(escolhido.codigo_barras);
+    
+    // Salva pendente para abrir e pedir a quantidade
+    avulsoPendenteParaQuantidade = escolhido;
+    abrirQuantidade();
 }
 
 function abrirModalAvulsoNaHora() {
@@ -809,21 +892,8 @@ async function confirmarAvulso() {
     if (!nome || !preco || preco <= 0) return alert("Preencha o nome e um valor válido!");
 
     let codigoGerado = 'AVULSO-' + Date.now();
-    let nomeFormatado = "(AVULSO) " + nome.toUpperCase();
-
-    const produtoAvulso = {
-        codigo_barras: codigoGerado,
-        nome: nomeFormatado,
-        preco: preco,
-        quantidade: multiplicadorAtual,
-        subtotal: preco * multiplicadorAtual
-    };
-
-    carrinho.push(produtoAvulso);
-    
-    document.getElementById("display-nome-produto").innerText = produtoAvulso.nome;
-    document.getElementById("display-unit").innerText = preco.toFixed(2).replace('.',',');
-    document.getElementById("display-subtotal").innerText = produtoAvulso.subtotal.toFixed(2).replace('.',',');
+    // AQUI RETIRAMOS O TEXTO "(AVULSO)" DA FRENTE DA PALAVRA NA NOTA!
+    let nomeFormatado = nome.toUpperCase();
 
     // === CADASTRO AUTOMÁTICO NO ESTOQUE ===
     const novoAvulsoEstoque = {
@@ -846,10 +916,11 @@ async function confirmarAvulso() {
     } catch(e) { console.warn("Erro ao salvar avulso automaticamente no banco."); }
     // ======================================
 
-    multiplicadorAtual = 1;
-    atualizarVisorQuantidade();
-    atualizarTela();
     fecharModal("modal-avulso");
+    
+    // Deixa salvo pendente e abre a tela de pedir a quantidade
+    avulsoPendenteParaQuantidade = novoAvulsoEstoque;
+    abrirQuantidade();
 }
 // =====================================================================
 
@@ -930,10 +1001,9 @@ async function confirmarCPF() {
             window.cadastrandoPeloCPF = true; 
             abrirModalCadastrarFiado(cpf); 
         }
-    } catch (e) {
-        alert("Erro ao consultar CPF no banco de dados.");
-    }
+    } catch (e) { alert("Erro ao consultar CPF no banco de dados."); }
 }
+
 function abrirModalCNPJ() {
     document.getElementById('modal-cnpj').classList.add('active');
     setTimeout(() => {
@@ -943,7 +1013,6 @@ function abrirModalCNPJ() {
     }, 100);
 }
 
-// 1. Função que confirma a busca do CNPJ
 async function confirmarCNPJ() {
     let cnpj = document.getElementById('input-cnpj-modal').value.trim();
     
@@ -957,32 +1026,23 @@ async function confirmarCNPJ() {
     }
 
     try {
-        // Busca os clientes/lojas no banco de dados
         const resp = await fetch('http://localhost:3000/api/fiados');
         const clientes = await resp.json();
-        
-        // Procura se tem algum cliente com esse CNPJ salvo
         const lojaEncontrada = clientes.find(c => c.cpf === cnpj); 
 
         if (lojaEncontrada) {
             cnpjNotaAtual = cnpj;
             nomeLojaCnpjAtual = lojaEncontrada.cliente;
-            
-            // Mostra na tela
             document.getElementById("cupom-cnpj-cliente").innerText = `${cnpj} - ${nomeLojaCnpjAtual}`;
             document.getElementById("display-cnpj-nota").innerText = `${cnpj} (${nomeLojaCnpjAtual})`;
             fecharModal('modal-cnpj');
         } else {
-            // Se não achou, abre o modal para cadastrar
             fecharModal('modal-cnpj');
             abrirModalCadastrarCNPJ(cnpj);
         }
-    } catch (e) {
-        alert("Erro ao consultar CNPJ no banco de dados.");
-    }
+    } catch (e) { alert("Erro ao consultar CNPJ no banco de dados."); }
 }
 
-// 2. Função que abre o modal de cadastro de Loja
 function abrirModalCadastrarCNPJ(cnpjSugerido) {
     document.getElementById("novocnpj-nome").value = "";
     document.getElementById("novocnpj-cnpj").value = cnpjSugerido;
@@ -990,47 +1050,33 @@ function abrirModalCadastrarCNPJ(cnpjSugerido) {
     setTimeout(() => document.getElementById("novocnpj-nome").focus(), 100);
 }
 
-// 3. Função que salva a nova loja no banco e já aplica na venda
 async function salvarNovoCNPJ() {
     const nomeLoja = document.getElementById("novocnpj-nome").value.trim().toUpperCase();
     const cnpj = document.getElementById("novocnpj-cnpj").value.trim();
 
     if (!nomeLoja) return alert("O Nome da Loja é obrigatório!");
 
-    // Cria o objeto da loja usando a mesma estrutura de clientes (fiados)
     const novaLoja = {
-        cliente: nomeLoja, 
-        cpf: cnpj, // Salva o CNPJ no campo 'cpf' do banco
-        telefone: "Não informado",
-        endereco: "Cadastrado no Caixa", 
-        dataCompra: new Date().toLocaleDateString('pt-BR'),
-        dataPagamento: "A combinar", 
-        total: 0, 
-        valorPago: 0, 
-        itens: [],
-        aniversario: "Não informado"
+        cliente: nomeLoja, cpf: cnpj, telefone: "Não informado",
+        endereco: "Cadastrado no Caixa", dataCompra: new Date().toLocaleDateString('pt-BR'),
+        dataPagamento: "A combinar", total: 0, valorPago: 0, itens: [], aniversario: "Não informado"
     };
 
     try {
-        // Envia para o servidor
         await fetch('http://localhost:3000/api/fiados', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novaLoja)
         });
         
         fecharModal('modal-cadastrar-cnpj');
-        
-        // Aplica automaticamente na venda
         cnpjNotaAtual = cnpj;
         nomeLojaCnpjAtual = nomeLoja;
         
         document.getElementById("cupom-cnpj-cliente").innerText = `${cnpj} - ${nomeLoja}`;
         document.getElementById("display-cnpj-nota").innerText = `${cnpj} (${nomeLoja})`;
         
-        setTimeout(() => { document.getElementById("venda-barras").focus(); }, 100);
-    } catch(e) { 
-        alert("Erro ao cadastrar a loja no sistema."); 
-    }
+    } catch(e) { alert("Erro ao cadastrar a loja no sistema."); }
 }
+
 function abrirQuantidade() {
     document.getElementById('modal-quantidade').classList.add('active');
     setTimeout(() => {
@@ -1038,6 +1084,7 @@ function abrirQuantidade() {
         input.value = ""; input.focus();
     }, 100);
 }
+
 function confirmarQuantidade() {
     let valStr = document.getElementById('input-nova-qtd').value.replace(',', '.');
     let val = parseFloat(valStr);
@@ -1046,6 +1093,12 @@ function confirmarQuantidade() {
         atualizarVisorQuantidade();
     }
     fecharModal('modal-quantidade');
+
+    // Se a gente veio pelo Avulso novo, aplica ele na compra agora de forma automática
+    if (avulsoPendenteParaQuantidade) {
+        adicionarProduto(avulsoPendenteParaQuantidade.codigo_barras);
+        avulsoPendenteParaQuantidade = null;
+    }
 }
 
 function atualizarVisorQuantidade() {
@@ -1072,7 +1125,10 @@ function adicionarProduto(codigoBarras) {
 }
 
 function inserirNoCarrinho(produtoOriginal, nomeVariacao, precoVariacao) {
-    const itemExistente = carrinho.find(i => i.codigo_barras === produtoOriginal.codigo_barras && i.nome === nomeVariacao);
+    // Retira qualquer rastro de "AVULSO" do nome caso seja um produto antigo cadastrado assim
+    let nomeFinal = nomeVariacao.replace(/\(AVULSO\)\s*/g, '').trim();
+
+    const itemExistente = carrinho.find(i => i.codigo_barras === produtoOriginal.codigo_barras && i.nome === nomeFinal);
     
     if (itemExistente) {
         itemExistente.quantidade += multiplicadorAtual; 
@@ -1080,15 +1136,15 @@ function inserirNoCarrinho(produtoOriginal, nomeVariacao, precoVariacao) {
     } else {
         carrinho.push({ 
             ...produtoOriginal, 
-            nome: nomeVariacao,
+            nome: nomeFinal,
             preco: precoVariacao,
             quantidade: multiplicadorAtual, 
             subtotal: precoVariacao * multiplicadorAtual,
-            variacaoNome: nomeVariacao 
+            variacaoNome: nomeFinal 
         });
     }
     
-    document.getElementById("display-nome-produto").innerText = nomeVariacao;
+    document.getElementById("display-nome-produto").innerText = nomeFinal;
     document.getElementById("display-unit").innerText = parseFloat(precoVariacao).toFixed(2).replace('.',',');
     document.getElementById("display-subtotal").innerText = (parseFloat(precoVariacao) * multiplicadorAtual).toFixed(2).replace('.',',');
     
@@ -1128,7 +1184,6 @@ function confirmarVariacao(index) {
     fecharModal("modal-variacoes");
     inserirNoCarrinho(produtoAguardandoVariacao, varEscolhida.nome, varEscolhida.preco);
     produtoAguardandoVariacao = null;
-    document.getElementById("venda-barras").focus();
 }
 
 function atualizarTela() {
@@ -1184,7 +1239,7 @@ function limparCaixaEVisores() {
     carrinho = []; valorTotal = 0; multiplicadorAtual = 1;
     contaFiadoOriginal_id = null; 
     cpfNotaAtual = "";
-nomeLojaCnpjAtual = ""; // <--- Adicione es
+    nomeLojaCnpjAtual = ""; 
     modoCarrinho = false; indiceCarrinhoSelecionado = -1;
     vendaEditandoId = null;
     window.cadastrandoPeloCPF = false;
@@ -1194,10 +1249,11 @@ nomeLojaCnpjAtual = ""; // <--- Adicione es
     document.getElementById("display-subtotal").innerText = "0,00";
     document.getElementById("cupom-cpf-cliente").innerText = "Não informado";
     document.getElementById("display-cpf-nota").innerText = "Não informado";
-    document.getElementById("cupom-cnpj-cliente").innerText = "Não informado"; // <--- ADICIONE AQUI
-    document.getElementById("display-cnpj-nota").innerText = "Não informado"; // <--- ADICIONE AQUI
+    document.getElementById("cupom-cnpj-cliente").innerText = "Não informado"; 
+    document.getElementById("display-cnpj-nota").innerText = "Não informado"; 
     atualizarVisorQuantidade(); atualizarTela(); document.getElementById("venda-barras").focus();
 }
+
 function abrirPagamento() {
     if (carrinho.length === 0) return alert("Adicione produtos primeiro!");
     pagamentosCaixa = [];
@@ -1299,7 +1355,6 @@ function imprimirNotinha() {
     const recibo = document.getElementById("recibo-impressao");
     
     let htmlRecibo = `
-        <!-- Colocamos 'font-weight: bold' para deixar tudo grosso e 'width: 95%' com 'padding-right' para não cortar na borda -->
         <div style="font-weight: bold; width: 95%; margin: 0 auto; padding-right: 4px;">
             <div style="text-align: center; margin-bottom: 10px;">
                 <h2 style="margin: 0;">${configImpressora.nome}</h2>
@@ -1313,7 +1368,6 @@ function imprimirNotinha() {
             <table style="width: 100%; text-align: left; font-size: 10px; font-weight: bold; margin-bottom: 10px; border-collapse: collapse; table-layout: fixed;">
                 <tr>
                     <th style="width: 15%; border-bottom: 1px dashed #000;">QTD</th>
-                    <!-- Diminuímos a descrição e aumentamos o total para 40% para caber os valores grandes sem cortar -->
                     <th style="width: 45%; border-bottom: 1px dashed #000;">DESC.</th>
                     <th style="width: 40%; text-align: right; border-bottom: 1px dashed #000; padding-right: 2px;">TOTAL</th>
                 </tr>
@@ -1367,6 +1421,7 @@ function imprimirNotinha() {
     window.print();
     setTimeout(() => { document.getElementById("venda-barras").focus(); }, 100);
 }
+
 async function abrirModalContas() {
     if (carrinho.length === 0) return alert("Passe os produtos no leitor primeiro!");
     const container = document.getElementById('lista-contas-existentes');
