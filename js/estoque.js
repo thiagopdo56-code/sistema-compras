@@ -7,29 +7,9 @@ let produtoGraficoAtual = null;
 let vendasGlobais = []; 
 
 document.addEventListener("DOMContentLoaded", async () => {
-    forcarLetrasMaiusculas();
-});
-
-function forcarLetrasMaiusculas() {
-    const aplicarNosInputs = () => {
-        document.querySelectorAll('input[type="text"], textarea').forEach(input => {
-            if (!input.dataset.maiusculaConfigurada) {
-                input.dataset.maiusculaConfigurada = "true";
-                input.style.textTransform = "uppercase";
-                input.addEventListener('input', function() {
-                    this.value = this.value.toUpperCase();
-                });
-            }
-        });
-    };
-    aplicarNosInputs();
-    const observer = new MutationObserver(aplicarNosInputs);
-    observer.observe(document.body, { childList: true, subtree: true });
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
     configurarMascaras();
 
+    // Busca vendas para o gráfico
     try {
         const respVendas = await fetch("http://localhost:3000/api/vendas");
         if (respVendas.ok) vendasGlobais = await respVendas.json();
@@ -49,11 +29,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const formCad = document.getElementById("formCadastro");
     if(formCad) formCad.addEventListener("submit", salvarProduto);
 
+    // Leitor de Código na Busca
     if(campoFiltro) {
         campoFiltro.addEventListener("keypress", function (evento) {
             if (evento.key === "Enter") {
                 evento.preventDefault();
-                const termo = campoFiltro.value.trim().replace(/^0+/, ''); 
+                const termo = campoFiltro.value.trim().replace(/^0+/, ''); // Limpa zeros
                 const soNumeros = /^\d+$/.test(termo);
                 const encontrado = todosProdutos.find(p =>
                     p.codigo_barras === termo ||
@@ -70,6 +51,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Tecla Enter no Cadastro
     const cadBarras = document.getElementById("cad-barras");
     if(cadBarras) {
         cadBarras.addEventListener("keypress", (e) => {
@@ -77,11 +59,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Datas do gráfico
     const elDataIni = document.getElementById("grafico-data-ini");
     const elDataFim = document.getElementById("grafico-data-fim");
     if(elDataIni) elDataIni.addEventListener("change", atualizarGrafico);
     if(elDataFim) elDataFim.addEventListener("change", atualizarGrafico);
 
+    // ATALHOS GLOBAIS DE TECLADO
     document.addEventListener("keydown", (e) => {
         const modalAtivo = document.querySelector('.modal-overlay.active');
         
@@ -90,7 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
                 if(document.getElementById("filtro-texto")) document.getElementById("filtro-texto").focus();
             } else {
-                window.location.href = "index.html"; 
+                window.location.href = "index.html"; // Volta pro Index se não tiver modal
             }
         }
 
@@ -191,19 +175,13 @@ function renderizarTabela(produtos) {
         let badgeStatus = estaEsgotado ? `<span class="status-esgotado">ESGOTADO</span>` : (estaAcabando ? `<span class="status-repor">REPOR!</span>` : `<span class="status-ok">OK</span>`);
 
         const idProduto = produto.id || `'${produto.codigo_barras}'`;
-        
-        let nomeExibicao = "";
-        if (variacoes.length === 1) {
-            nomeExibicao = `<strong>${variacoes[0].nome}</strong>`;
-        } else if (variacoes.length > 1) {
-            nomeExibicao = `
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <span style="font-size: 0.95rem;"><strong>${variacoes[0].nome}</strong></span>
-                    <span style="font-size: 0.8rem; background: #f59e0b; color: #fff; padding: 2px 6px; border-radius: 4px; display: inline-block; width: fit-content;">+ ${variacoes.length - 1} variação(ões)</span>
-                </div>
-            `;
-        } else {
-            nomeExibicao = `<strong>${produto.nome || 'Produto'}</strong>`;
+        let nomeExibicao = variacoes.length === 1 ? `<strong>${variacoes[0].nome}</strong>` : `<div style="display: flex; flex-direction: column; gap: 4px;">`;
+        if (variacoes.length > 1) {
+            variacoes.forEach(v => {
+                let precoV = parseFloat(v.preco).toFixed(2).replace('.', ',');
+                nomeExibicao += `<span style="font-size: 0.9rem;"><strong>${v.nome}</strong> <span style="color:#0055A4; font-size:0.8rem;">(R$ ${precoV} | Est: ${v.estoque})</span></span>`;
+            });
+            nomeExibicao += `</div>`;
         }
 
         tbody.innerHTML += `
@@ -325,6 +303,7 @@ async function salvarProduto(evento) {
     try {
         await fetch(url, { method: metodo, headers: { "Content-Type": "application/json" }, body: JSON.stringify(produtoForm) });
     } catch (e) {
+        // Fallback Local
         if (produtoEditandoId) {
             const i = todosProdutos.findIndex(p => p.id === produtoEditandoId || p.codigo_barras === produtoEditandoId);
             if (i > -1) todosProdutos[i] = { ...todosProdutos[i], ...produtoForm };
@@ -357,167 +336,45 @@ async function excluirProduto(id) {
     await carregarBanco();
 }
 
-/* ================= LÓGICA ATUALIZADA DO GRÁFICO E TABELA DE VENDAS ================= */
-const parseDateTimeBR = (dataStr, horaStr) => { 
-    if(!dataStr) return 0; 
-    let d = dataStr.includes('/') ? dataStr.split('/') : dataStr.split('-');
-    if(d[0].length === 4) d = [d[2], d[1], d[0]]; 
-    
-    let hora = 0, min = 0, seg = 0;
-    if (horaStr) {
-        let partesHora = horaStr.split(':');
-        hora = parseInt(partesHora[0]) || 0;
-        min = parseInt(partesHora[1]) || 0;
-        seg = parseInt(partesHora[2]) || 0;
-    }
-    return new Date(d[2], d[1] - 1, d[0], hora, min, seg).getTime(); 
+/* ================= GRÁFICOS (MANTIDOS) ================= */
+const parseDateBR = (str) => { 
+    if(!str) return null; 
+    let d = str.includes('T') ? str.split('T')[0].split('-') : (str.includes('-') ? str.split('-') : str.split('/'));
+    if(d[0].length === 4) d = [d[2], d[1], d[0]];
+    return new Date(d[2], d[1] - 1, d[0]).getTime(); 
 };
-
-function injetarFiltrosETabelaNoModal() {
-    const elDataIni = document.getElementById("grafico-data-ini");
-    if (!elDataIni) return;
-
-    const containerDatas = elDataIni.parentElement;
-    if (!document.getElementById("grafico-hora-ini")) {
-        containerDatas.style.display = "flex";
-        containerDatas.style.alignItems = "center";
-        containerDatas.style.gap = "5px";
-        containerDatas.style.flexWrap = "wrap";
-        
-        containerDatas.innerHTML = `
-            <label style="font-weight: bold; color: #0055A4; margin-right: 5px;">De:</label>
-            <input type="date" id="grafico-data-ini" style="padding: 8px; border-radius: 4px; border: 1px solid #b3d4ff;">
-            <input type="time" id="grafico-hora-ini" value="00:00" style="padding: 8px; border-radius: 4px; border: 1px solid #b3d4ff;">
-            
-            <label style="font-weight: bold; color: #0055A4; margin: 0 5px;">Até:</label>
-            <input type="date" id="grafico-data-fim" style="padding: 8px; border-radius: 4px; border: 1px solid #b3d4ff;">
-            <input type="time" id="grafico-hora-fim" value="23:59" style="padding: 8px; border-radius: 4px; border: 1px solid #b3d4ff;">
-        `;
-        
-        document.getElementById("grafico-data-ini").addEventListener("change", atualizarGrafico);
-        document.getElementById("grafico-data-fim").addEventListener("change", atualizarGrafico);
-        document.getElementById("grafico-hora-ini").addEventListener("change", atualizarGrafico);
-        document.getElementById("grafico-hora-fim").addEventListener("change", atualizarGrafico);
-    }
-
-    const canvasContainer = document.getElementById("canvasGraficoVendas").parentElement;
-    if (!document.getElementById("tabela-historico-produto")) {
-        const divTabela = document.createElement("div");
-        divTabela.innerHTML = `
-            <h4 style="margin-top: 15px; color: #0055A4; text-align: left; font-size: 1.1rem;"><i class="fa-solid fa-list-check"></i> Histórico de Vendas Deste Produto</h4>
-            <div style="max-height: 150px; overflow-y: auto; border: 2px solid #b3d4ff; border-radius: 6px; margin-top: 10px; background: #f8fafc;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
-                    <thead style="background: #0055A4; color: white; position: sticky; top: 0;">
-                        <tr>
-                            <th style="padding: 8px;">Data / Hora</th>
-                            <th style="padding: 8px;">Qtd Vendida</th>
-                            <th style="padding: 8px;">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-historico-produto">
-                    </tbody>
-                </table>
-            </div>
-        `;
-        canvasContainer.parentElement.appendChild(divTabela);
-    }
-}
 
 function abrirModalGrafico(id) {
     produtoGraficoAtual = todosProdutos.find(p => p.id === id || p.codigo_barras === id);
     if (!produtoGraficoAtual) return;
-    
-    injetarFiltrosETabelaNoModal(); 
-    
     document.getElementById("grafico-titulo").innerHTML = `<i class="fa-solid fa-chart-line"></i> DESEMPENHO: ${produtoGraficoAtual.nome}`;
     
-    let hj = new Date(); 
-    let ant = new Date(); ant.setDate(hj.getDate() - 30);
-    
+    let hj = new Date(); let ant = new Date(); ant.setDate(hj.getDate() - 30);
     document.getElementById("grafico-data-fim").value = hj.toISOString().split('T')[0];
     document.getElementById("grafico-data-ini").value = ant.toISOString().split('T')[0];
-    document.getElementById("grafico-hora-ini").value = "00:00";
-    document.getElementById("grafico-hora-fim").value = "23:59";
-    
-    abrirModal("modal-grafico"); 
-    atualizarGrafico();
+    abrirModal("modal-grafico"); atualizarGrafico();
 }
 
 function atualizarGrafico() {
     if (!produtoGraficoAtual) return;
-    
-    const dataIniStr = document.getElementById("grafico-data-ini").value;
-    const horaIniStr = document.getElementById("grafico-hora-ini").value || "00:00";
-    
-    const dataFimStr = document.getElementById("grafico-data-fim").value;
-    const horaFimStr = document.getElementById("grafico-hora-fim").value || "23:59";
-
-    const iMs = new Date(`${dataIniStr}T${horaIniStr}:00`).getTime();
-    const fMs = new Date(`${dataFimStr}T${horaFimStr}:59`).getTime();
+    let iMs = new Date(document.getElementById("grafico-data-ini").value + "T00:00:00").getTime() || 0;
+    let fMs = new Date(document.getElementById("grafico-data-fim").value + "T23:59:59").getTime() || Infinity;
 
     let tot = 0, hist = {};
-    let arrayDetalhesHistorico = [];
-
     vendasGlobais.forEach(v => {
-        let vMs = parseDateTimeBR(v.data, v.hora);
-        
+        let vMs = parseDateBR(v.data);
         if (vMs >= iMs && vMs <= fMs) {
             let it = typeof v.itens === 'string' ? JSON.parse(v.itens) : v.itens;
-            
-            // INTELIGÊNCIA MELHORADA PARA RECONHECER PRODUTOS E AVULSOS
-            let itensVendidos = it.filter(item => {
-                const mesmoCodigo = item.codigo_barras === produtoGraficoAtual.codigo_barras;
-                const mesmoNome = item.nome && produtoGraficoAtual.nome && (
-                    item.nome.trim().toUpperCase() === produtoGraficoAtual.nome.trim().toUpperCase() ||
-                    item.nome.replace('(AVULSO) ', '').trim().toUpperCase() === produtoGraficoAtual.nome.replace('(AVULSO) ', '').trim().toUpperCase()
-                );
-                return mesmoCodigo || mesmoNome;
-            });
-            
-            itensVendidos.forEach(itemVendido => {
-                tot += itemVendido.quantidade;
-                hist[v.data] = (hist[v.data] || 0) + itemVendido.quantidade;
-                
-                let varNome = itemVendido.variacaoNome ? itemVendido.variacaoNome : itemVendido.nome;
-                let badgeVar = (produtoGraficoAtual.variacoes && produtoGraficoAtual.variacoes.length > 1) 
-                    ? `<br><span style="font-size: 0.75rem; background: #e2e8f0; color: #003366; padding: 2px 6px; border-radius: 4px; margin-top: 2px; display: inline-block; font-weight:bold;">Var: ${varNome}</span>` 
-                    : '';
-
-                arrayDetalhesHistorico.push({
-                    data: v.data,
-                    hora: v.hora || '--:--',
-                    qtd: itemVendido.quantidade,
-                    subtotal: itemVendido.subtotal || 0,
-                    timestamp: vMs,
-                    badgeHtml: badgeVar
-                });
+            it.forEach(item => {
+                if (item.codigo_barras === produtoGraficoAtual.codigo_barras) {
+                    tot += item.quantidade;
+                    hist[v.data] = (hist[v.data] || 0) + item.quantidade;
+                }
             });
         }
     });
 
-    const tbodyHistorico = document.getElementById("tabela-historico-produto");
-    if (tbodyHistorico) {
-        tbodyHistorico.innerHTML = "";
-        
-        if (arrayDetalhesHistorico.length === 0) {
-            tbodyHistorico.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 10px; color:#ef4444; font-weight:bold;">Nenhuma venda neste período.</td></tr>`;
-        } else {
-            arrayDetalhesHistorico.sort((a, b) => b.timestamp - a.timestamp);
-            
-            arrayDetalhesHistorico.forEach(linha => {
-                let qtdExibicao = Number.isInteger(linha.qtd) ? linha.qtd : linha.qtd.toFixed(3);
-                tbodyHistorico.innerHTML += `
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 8px; vertical-align: top;">${linha.data} - ${linha.hora}${linha.badgeHtml}</td>
-                        <td style="padding: 8px; font-weight: bold; color: #003366;">${qtdExibicao}</td>
-                        <td style="padding: 8px; color: #10b981; font-weight: bold;">R$ ${linha.subtotal.toFixed(2).replace('.', ',')}</td>
-                    </tr>
-                `;
-            });
-        }
-    }
-
-    let dt = Object.keys(hist).sort((a,b) => parseDateTimeBR(a, "00:00") - parseDateTimeBR(b, "00:00"));
+    let dt = Object.keys(hist).sort((a,b) => parseDateBR(a) - parseDateBR(b));
     let lbl = dt.map(d => d.substring(0, 5));
     let val = dt.map(d => hist[d]);
 
@@ -536,7 +393,7 @@ function atualizarGrafico() {
     if (graficoVendasObj) graficoVendasObj.destroy();
     graficoVendasObj = new Chart(ctx, {
         type: 'line',
-        data: { labels: lbl, datasets: [{ label: 'Qtd Vendida', data: val, borderColor: '#0055A4', backgroundColor: 'rgba(0, 85, 164, 0.1)', fill: true, tension: 0.3 }] },
+        data: { labels: lbl, datasets: [{ label: 'Vendas', data: val, borderColor: '#0055A4', backgroundColor: 'rgba(0, 85, 164, 0.1)', fill: true, tension: 0.3 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 }

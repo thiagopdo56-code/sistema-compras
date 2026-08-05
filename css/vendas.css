@@ -140,7 +140,6 @@ body {
 .btn-atalho.na-conta { background: #f59e0b; border-color: #b45309; color: white; }
 .btn-atalho.na-conta .tecla { background: #b45309; }
 
-
 /* ================= MODAIS ================= */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -185,163 +184,17 @@ body {
 }
 .lista-clientes-fiado button:hover { background: #0055A4; color: white; }
 
-
-/* ======================================================== */
-/* IMPRESSÃO PERFEITA (Resolve o bug do papel em branco)    */
-/* ======================================================== */
+/* Estilo para impressão (oculta o sistema e mostra só a notinha) */
 #recibo-impressao { display: none; }
-
 @media print {
-    /* 1. Remove as margens do navegador e o comportamento padrão */
-    @page {
-        margin: 0; 
-    }
-    
-    /* 2. Reseta a altura do body para o tamanho exato do texto (evita bobina rodando direto) */
-    html, body {
-        height: auto !important;
-        overflow: visible !important;
-        background-color: #ffffff !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    /* 3. Oculta TODOS os elementos da tela que não sejam o recibo. 
-       Usamos display:none em vez de visibility:hidden para não deixar espaço sobrando. */
-    body > *:not(#recibo-impressao) {
-        display: none !important;
-    }
-
-    /* 4. Exibe e formata apenas a área do recibo para a Tanca (80mm) */
+    body * { visibility: hidden; }
+    .pdv-layout { display: none !important; }
+    #recibo-impressao, #recibo-impressao * { visibility: visible; }
     #recibo-impressao {
         display: block !important;
-        width: 80mm; /* Acomoda o papel maior padrão de 80mm */
-        margin: 0;
-        padding: 5px; /* Margem leve de segurança na impressão */
+        position: absolute; left: 0; top: 0;
+        width: 58mm;
         font-family: 'Courier New', Courier, monospace;
-        font-size: 12px;
-        color: #000;
-        position: relative; /* Remove o absolute antigo que quebrava a altura */
-    }
-}
-
-
-/* ======================================================== */
-/* AJUSTES PARA O MONITOR QUADRADO (1024x768) E TELAS MENORES */
-/* ======================================================== */
-@media screen and (max-width: 1024px), screen and (max-height: 768px) {
-    .pdv-layout {
-        grid-template-columns: 280px 1fr;
-    }
-
-    .painel-notinha-container {
-        padding: 10px;
-    }
-
-    .painel-operacao {
-        padding: 10px;
-        gap: 10px;
-    }
-
-    .header-operacao {
-        padding: 10px 15px;
-        font-size: 1rem;
-    }
-
-    .display-produto-atual {
-        padding: 15px;
-    }
-
-    #display-nome-produto {
-        font-size: 1.8rem;
-        margin-bottom: 15px;
-    }
-
-    .display-valores-grid {
-        gap: 10px;
-    }
-
-    .display-box {
-        padding: 12px 10px;
-    }
-
-    .display-box .label {
-        font-size: 0.9rem;
-    }
-
-    .display-box .valor {
-        font-size: 1.8rem;
-    }
-
-    .leitor-container {
-        padding: 15px;
-    }
-
-    .leitor-container label {
-        font-size: 1.1rem;
-        margin-bottom: 8px;
-    }
-
-    .leitor-container input {
-        padding: 12px;
-        font-size: 1.8rem;
-    }
-
-    .menu-atalhos {
-        gap: 8px;
-    }
-
-    .btn-atalho {
-        padding: 10px;
-        font-size: 0.95rem;
-    }
-
-    .btn-atalho .tecla {
-        font-size: 0.8rem;
-        padding: 3px 6px;
-    }
-
-    .pdv-modal {
-        width: 500px;
-    }
-
-    .modal-header-pdv {
-        padding: 15px;
-    }
-
-    .total-cobrar {
-        font-size: 2.8rem;
-    }
-
-    .formas-pagamento-grid {
-        padding: 15px;
-        gap: 8px;
-    }
-
-    .forma-box {
-        padding: 10px 5px;
-        font-size: 0.9rem;
-    }
-
-    .valores-pagamento-container {
-        padding: 0 15px 15px 15px;
-    }
-
-    .input-pdv {
-        padding: 10px 15px;
-        margin-bottom: 8px;
-    }
-
-    .input-pdv label {
-        font-size: 1.1rem;
-    }
-
-    .input-pdv input {
-        font-size: 1.8rem;
-    }
-
-    .btn-pdv-confirmar {
-        padding: 15px;
-        font-size: 1.3rem;
+        font-size: 12px; color: #000;
     }
 }

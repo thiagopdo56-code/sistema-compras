@@ -2,13 +2,13 @@
 
 // ====== CONFIGURAÇÃO FIREBASE ======
 const firebaseConfig = {
-  apiKey: "AIzaSyBZYWl6TWgSthBAVe1bTp2SkmDAdmtXieM",
-  authDomain: "vendas2-47769.firebaseapp.com",
-  projectId: "vendas2-47769",
-  storageBucket: "vendas2-47769.firebasestorage.app",
-  messagingSenderId: "34980699438",
-  appId: "1:34980699438:web:643b2dbe31331d16886ebf",
-  measurementId: "G-Y1MGMGQWDK"
+  apiKey: "AIzaSyD7wJktOHu8-DcjUJuq2LNfc3tzbPYG51I",
+  authDomain: "vendas-5be3a.firebaseapp.com",
+  projectId: "vendas-5be3a",
+  storageBucket: "vendas-5be3a.firebasestorage.app",
+  messagingSenderId: "1081607347261",
+  appId: "1:1081607347261:web:042bcb33c48d115d6ade54",
+  measurementId: "G-VCGD6B2XET"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -16,39 +16,8 @@ const db = firebase.firestore();
 
 let todasAsVendas = [];
 let chartInstancia = null;
+
 document.addEventListener("DOMContentLoaded", async () => {
-    // ... manter códigos existentes ...
-    forcarLetrasMaiusculas();
-});
-
-function forcarLetrasMaiusculas() {
-    const aplicarNosInputs = () => {
-        document.querySelectorAll('input[type="text"], textarea').forEach(input => {
-            if (!input.dataset.maiusculaConfigurada) {
-                input.dataset.maiusculaConfigurada = "true";
-                input.style.textTransform = "uppercase";
-                input.addEventListener('input', function() {
-                    this.value = this.value.toUpperCase();
-                });
-            }
-        });
-    };
-    aplicarNosInputs();
-    const observer = new MutationObserver(aplicarNosInputs);
-    observer.observe(document.body, { childList: true, subtree: true });
-}
-
-// Mantendo a função nativa de edição no Caixa interligada
-function editarVendaNoCaixa(idVenda) {
-    if(confirm("Deseja abrir esta nota no CAIXA para editá-la?")) {
-        localStorage.setItem("editandoVendaId", idVenda);
-        window.location.href = "vendas.html";
-    }
-}
-document.addEventListener("DOMContentLoaded", async () => {
-    // 1. Injeta os campos de hora dinamicamente no HTML existente
-    injetarInputsDeHora();
-
     const hoje = new Date();
     const seteDiasAtras = new Date();
     seteDiasAtras.setDate(hoje.getDate() - 7);
@@ -59,187 +28,141 @@ document.addEventListener("DOMContentLoaded", async () => {
     await carregarVendasBanco();
 
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") window.location.href = "index.html";
+        if (e.key === "Escape") {
+            window.location.href = "index.html";
+        }
     });
 });
 
-// ==== INJEÇÃO AUTOMÁTICA DOS CAMPOS DE HORA ====
-function injetarInputsDeHora() {
-    const dataIniInput = document.getElementById("filtro-data-ini");
-    if (dataIniInput && !document.getElementById("filtro-hora-ini")) {
-        const wrapper = document.createElement("div");
-        wrapper.style.display = "flex";
-        wrapper.style.gap = "5px";
-        dataIniInput.parentNode.insertBefore(wrapper, dataIniInput);
-        wrapper.appendChild(dataIniInput);
-        
-        const horaIni = document.createElement("input");
-        horaIni.type = "time";
-        horaIni.id = "filtro-hora-ini";
-        horaIni.value = "00:00";
-        wrapper.appendChild(horaIni);
-    }
-
-    const dataFimInput = document.getElementById("filtro-data-fim");
-    if (dataFimInput && !document.getElementById("filtro-hora-fim")) {
-        const wrapper = document.createElement("div");
-        wrapper.style.display = "flex";
-        wrapper.style.gap = "5px";
-        dataFimInput.parentNode.insertBefore(wrapper, dataFimInput);
-        wrapper.appendChild(dataFimInput);
-        
-        const horaFim = document.createElement("input");
-        horaFim.type = "time";
-        horaFim.id = "filtro-hora-fim";
-        horaFim.value = "23:59";
-        wrapper.appendChild(horaFim);
-    }
-}
-
-function formatarDataInput(dateObj) {
-    const d = String(dateObj.getDate()).padStart(2, '0');
-    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const y = dateObj.getFullYear();
-    return `${y}-${m}-${d}`; 
-}
-
-// Junta a string de Data (DD/MM/YYYY) com Hora (HH:MM:SS) em Milissegundos exatos
-function converterDataHoraBrParaDate(dataBr, horaBr) {
-    if (!dataBr) return 0;
-    const partes = dataBr.split('/');
-    if (partes.length !== 3) return 0;
-
-    let h = 0, m = 0, s = 0;
-    if (horaBr) {
-        const partesHora = horaBr.split(':');
-        h = parseInt(partesHora[0]) || 0;
-        m = parseInt(partesHora[1]) || 0;
-        s = parseInt(partesHora[2]) || 0;
-    }
-    
-    return new Date(partes[2], partes[1] - 1, partes[0], h, m, s).getTime();
+function formatarDataInput(data) {
+    let rAno = data.getFullYear();
+    let rMes = String(data.getMonth() + 1).padStart(2, '0');
+    let rDia = String(data.getDate()).padStart(2, '0');
+    return `${rAno}-${rMes}-${rDia}`;
 }
 
 async function carregarVendasBanco() {
     try {
         const snapshot = await db.collection("vendas").get();
-        todasAsVendas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        aplicarFiltros(); 
+        todasAsVendas = [];
+        snapshot.forEach(doc => {
+            todasAsVendas.push({ id: doc.id, ...doc.data() });
+        });
+        filtrarVendas();
     } catch (e) {
-        console.error("Erro ao carregar vendas do Firebase.", e);
+        console.error("Erro ao carregar vendas:", e);
     }
 }
 
-function aplicarFiltros() {
-    // Coleta as Datas
-    const iniStr = document.getElementById("filtro-data-ini").value;
-    const fimStr = document.getElementById("filtro-data-fim").value;
-    
-    // Coleta as Horas (se o elemento não existir por algum motivo, usa padrão)
-    const horaIniStr = document.getElementById("filtro-hora-ini") ? document.getElementById("filtro-hora-ini").value : "00:00";
-    const horaFimStr = document.getElementById("filtro-hora-fim") ? document.getElementById("filtro-hora-fim").value : "23:59";
+function filtrarVendas() {
+    const dataIniInput = document.getElementById("filtro-data-ini").value;
+    const dataFimInput = document.getElementById("filtro-data-fim").value;
 
-    // Converte os inputs no padrão universal de timestamp
-    const dtInicioMs = new Date(`${iniStr}T${horaIniStr}:00`).getTime();
-    const dtFimMs = new Date(`${fimStr}T${horaFimStr}:59`).getTime();
+    if (!dataIniInput || !dataFimInput) return;
+
+    const partsIni = dataIniInput.split('-');
+    const dateIni = new Date(partsIni[0], partsIni[1] - 1, partsIni[2], 0, 0, 0);
+
+    const partsFim = dataFimInput.split('-');
+    const dateFim = new Date(partsFim[0], partsFim[1] - 1, partsFim[2], 23, 59, 59);
+
+    const vendasFiltradas = todasAsVendas.filter(venda => {
+        if (!venda.data) return false;
+        const p = venda.data.split('/');
+        const dataVenda = new Date(p[2], p[1] - 1, p[0]);
+        return dataVenda >= dateIni && dataVenda <= dateFim;
+    });
 
     let totalVendas = 0;
-    let totalContasRecebidas = 0;
-
-    const vendasFiltradas = todasAsVendas.filter(v => {
-        // Converte a data e a hora que vem do firebase para timestamp
-        const vMs = converterDataHoraBrParaDate(v.data, v.hora);
-        return vMs >= dtInicioMs && vMs <= dtFimMs;
+    vendasFiltradas.forEach(v => {
+        totalVendas += v.totalLiquido || v.totalBruto || 0;
     });
 
-    const vendasParaTabela = [...vendasFiltradas].reverse();
-
-    const tbody = document.getElementById("tabela-relatorios");
-    tbody.innerHTML = "";
-
-    if (vendasParaTabela.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color:#ef4444;"><i class="fa-solid fa-folder-open"></i> Nenhuma movimentação no período/horário selecionado.</td></tr>`;
-    }
-
-    let faturamentoPorData = {};
-
-    vendasParaTabela.forEach(venda => {
-        let totalFloat = parseFloat(venda.totalLiquido || venda.totalBruto || venda.valorParaRelatorio || 0);
-        let eRecebimento = venda.pagamento === "Recebimento de Conta";
-
-        if (eRecebimento) {
-            totalContasRecebidas += totalFloat;
-        } else {
-            totalVendas += totalFloat;
-        }
-
-        // Agrupa os valores por dia (ignora a hora pro gráfico ficar visível)
-        if (!faturamentoPorData[venda.data]) faturamentoPorData[venda.data] = 0;
-        faturamentoPorData[venda.data] += totalFloat;
-
-        let badgeTipo = eRecebimento 
-            ? `<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;"><i class="fa-solid fa-handshake"></i> Conta Recebida</span>`
-            : `<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;"><i class="fa-solid fa-cart-shopping"></i> Venda Caixa</span>`;
-        
-        let idExibicao = venda.id ? venda.id.substring(0,5) : '-';
-
-        tbody.innerHTML += `
-            <tr>
-                <td>#${idExibicao}</td>
-                <td>${venda.data} às ${venda.hora || '--:--'}</td>
-                <td>${badgeTipo}</td>
-                <td>${venda.pagamento}</td>
-                <td style="color: #10b981; font-weight: 900;">R$ ${totalFloat.toFixed(2).replace('.', ',')}</td>
-                <td class="acoes-cell">
-                    <button class="btn-icon edit" onclick="editarVendaNoCaixa('${venda.id}')" title="Editar no PDV">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                    </button>
-                    <button class="btn-icon delete" onclick="excluirVenda('${venda.id}')" title="Excluir Definitivamente">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-
-    let totalGeral = totalVendas + totalContasRecebidas;
     document.getElementById("resumo-vendas").innerText = `R$ ${totalVendas.toFixed(2).replace('.', ',')}`;
-    document.getElementById("resumo-contas").innerText = `R$ ${totalContasRecebidas.toFixed(2).replace('.', ',')}`;
-    document.getElementById("resumo-total").innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+    document.getElementById("resumo-total").innerText = `R$ ${totalVendas.toFixed(2).replace('.', ',')}`;
 
-    renderizarGraficoMontanhaRussa(faturamentoPorData);
+    renderizarCardsVendas(vendasFiltradas);
+    atualizarGrafico(vendasFiltradas);
 }
 
-function renderizarGraficoMontanhaRussa(dadosPorData) {
-    const datasOrdenadas = Object.keys(dadosPorData).sort((a, b) => {
-        return converterDataHoraBrParaDate(a, "00:00") - converterDataHoraBrParaDate(b, "00:00");
+function renderizarCardsVendas(vendas) {
+    const container = document.getElementById("tabela-relatorios");
+    container.innerHTML = "";
+
+    if (vendas.length === 0) {
+        container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #64748b; font-weight: bold; padding: 30px;">Nenhuma venda encontrada para o período selecionado.</p>`;
+        return;
+    }
+
+    vendas.forEach(venda => {
+        const total = venda.totalLiquido || venda.totalBruto || 0;
+        const pagamento = venda.pagamento || "Dinheiro";
+        const dataHora = `${venda.data} às ${venda.hora || ''}`;
+        const totalItens = venda.itens ? venda.itens.length : 0;
+
+        container.innerHTML += `
+            <div class="card-venda">
+                <div class="card-venda-header">
+                    <span class="card-venda-id"><i class="fa-solid fa-hashtag"></i> ${venda.id.substring(0, 6).toUpperCase()}</span>
+                    <span class="card-venda-data"><i class="fa-regular fa-clock"></i> ${dataHora}</span>
+                </div>
+                <div class="card-venda-body">
+                    <div class="card-venda-info">
+                        <span class="info-label">Forma de Pgto:</span>
+                        <span class="info-valor pgto-tag">${pagamento}</span>
+                    </div>
+                    <div class="card-venda-info">
+                        <span class="info-label">Produtos:</span>
+                        <span class="info-valor">${totalItens} item(ns)</span>
+                    </div>
+                    <div class="card-venda-total">
+                        <span class="total-label">Total:</span>
+                        <span class="total-valor">R$ ${total.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>
+                <div class="card-venda-acoes">
+                    <button onclick="editarVendaNoCaixa('${venda.id}')" class="btn-card-editar" title="Editar nota no caixa">
+                        <i class="fa-solid fa-pen"></i> Editar
+                    </button>
+                    <button onclick="excluirVenda('${venda.id}')" class="btn-card-excluir" title="Excluir nota permanentemente">
+                        <i class="fa-solid fa-trash"></i> Excluir
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function atualizarGrafico(vendas) {
+    const agrupado = {};
+    vendas.forEach(v => {
+        agrupado[v.data] = (agrupado[v.data] || 0) + (v.totalLiquido || v.totalBruto || 0);
     });
 
-    const labels = [];
-    const dados = [];
-
-    datasOrdenadas.forEach(data => {
-        labels.push(data.substring(0, 5)); 
-        dados.push(dadosPorData[data]);
+    const labels = Object.keys(agrupado).sort((a, b) => {
+        const pa = a.split('/'); const pb = b.split('/');
+        return new Date(pa[2], pa[1] - 1, pa[0]) - new Date(pb[2], pb[1] - 1, pb[0]);
     });
+    const valores = labels.map(l => agrupado[l]);
 
     const ctx = document.getElementById('graficoVendas').getContext('2d');
     
-    if (chartInstancia) chartInstancia.destroy();
+    if (chartInstancia) {
+        chartInstancia.destroy();
+    }
 
     chartInstancia = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Faturamento Diário (R$)',
-                data: dados,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.2)', 
+                label: 'Faturamento',
+                data: valores,
+                borderColor: '#0055A4',
+                backgroundColor: 'rgba(0, 85, 164, 0.1)',
                 borderWidth: 3,
-                fill: true, 
-                tension: 0.4, 
-                pointBackgroundColor: '#0055A4',
+                fill: true,
+                tension: 0.3,
                 pointRadius: 5,
                 pointHoverRadius: 8
             }]
@@ -277,10 +200,11 @@ async function excluirVenda(idVenda) {
     if(confirm(`ATENÇÃO! Deseja EXCLUIR DEFINITIVAMENTE a nota?\n\nIsso NÃO voltará os produtos para o estoque automaticamente.`)) {
         try {
             await db.collection("vendas").doc(idVenda).delete();
-            alert("Venda excluída com sucesso.");
-            await carregarVendasBanco(); 
-        } catch(e) {
-            alert("Erro de conexão com o Firebase.");
+            alert("Venda excluída com sucesso!");
+            await carregarVendasBanco();
+        } catch (e) {
+            console.error("Erro ao excluir venda:", e);
+            alert("Erro ao excluir do Firebase.");
         }
     }
 }

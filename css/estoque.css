@@ -109,23 +109,10 @@ body {
 }
 .modal-overlay.active { display: flex; }
 
-.pdv-modal { background: #ffffff; border: 4px solid #0055A4; border-radius: 12px; width: 100%; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.pdv-modal { background: #ffffff; border: 4px solid #0055A4; border-radius: 12px; width: 100%; padding: 0; overflow: hidden; }
 .modal-lg { max-width: 800px; }
-
 .modal-header-pdv { background: #003366; padding: 20px; color: white; text-align: center;}
 .modal-header-pdv h2 { font-size: 1.5rem; margin: 0; }
-
-/* Adicionado corpo do modal com scroll para evitar estourar a tela */
-.modal-body {
-    padding: 20px;
-    overflow-y: auto;
-    max-height: 65vh; /* Limita a altura do miolo do modal */
-}
-
-/* Adicionado rodapé fixo para os botões do modal */
-.modal-footer {
-    display: flex; gap: 10px; padding: 20px; background: #f8fafc; border-top: 2px solid #e2e8f0;
-}
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;}
 .input-pdv-config { display: flex; flex-direction: column; gap: 5px; }
@@ -146,54 +133,3 @@ body {
 .stat-box { flex: 1; background: #f0f8ff; border: 2px solid #b3d4ff; padding: 15px; border-radius: 8px; text-align: center; }
 .stat-box p { font-size: 0.9rem; font-weight: bold; color: #0055A4; margin-bottom: 5px; }
 .stat-box h3 { font-size: 2rem; margin: 0; }
-
-/* Essencial: Trava o tamanho do gráfico para não crescer infinito */
-.grafico-wrapper {
-    position: relative;
-    height: 250px; 
-    width: 100%;
-    margin-top: 15px;
-}
-
-
-/* ======================================================== */
-/* AJUSTES PARA O MONITOR QUADRADO (1024x768) E TELAS MENORES */
-/* ======================================================== */
-@media screen and (max-width: 1024px), screen and (max-height: 768px) {
-    .estoque-layout { padding: 10px; gap: 10px; }
-    .header-operacao { padding: 10px 15px; }
-    .header-titulo h2 { font-size: 1.2rem; }
-    .btn-acao-principal { padding: 8px 15px; font-size: 1rem; }
-    
-    .filtros-container { padding: 10px; gap: 10px; flex-wrap: wrap; }
-    .filtro-grupo input, .filtro-grupo select { padding: 8px; font-size: 0.95rem; }
-    
-    .table-container { padding: 10px; }
-    .table-container th, .table-container td { padding: 8px; font-size: 0.95rem; }
-    
-    /* Modais e scroll */
-    .pdv-modal.modal-lg { max-width: 95%; }
-    .modal-header-pdv { padding: 15px; }
-    .modal-header-pdv h2 { font-size: 1.3rem; }
-    
-    .modal-body { 
-        padding: 15px; 
-        max-height: 60vh; /* Mantém o rodapé e cabeçalho visíveis na tela de 768px */
-    }
-    
-    .modal-footer { padding: 15px; }
-    
-    .form-grid { gap: 10px; margin-bottom: 15px; }
-    .input-pdv-config input, .input-pdv-config select { padding: 8px; font-size: 1rem; }
-    
-    .btn-pdv-confirmar, .btn-pdv-cancelar { padding: 10px; font-size: 1.1rem; }
-    
-    /* Gráficos no Modal */
-    .stat-box { padding: 10px; }
-    .stat-box h3 { font-size: 1.5rem; }
-    .stat-box p { font-size: 0.8rem; }
-    
-    .grafico-wrapper { 
-        height: 180px; /* Reduz a altura do gráfico para caber na tela pequena */ 
-    } 
-}

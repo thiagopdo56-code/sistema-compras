@@ -2,13 +2,13 @@
 
 // ====== CONFIGURAÇÃO FIREBASE ======
 const firebaseConfig = {
-  apiKey: "AIzaSyBZYWl6TWgSthBAVe1bTp2SkmDAdmtXieM",
-  authDomain: "vendas2-47769.firebaseapp.com",
-  projectId: "vendas2-47769",
-  storageBucket: "vendas2-47769.firebasestorage.app",
-  messagingSenderId: "34980699438",
-  appId: "1:34980699438:web:643b2dbe31331d16886ebf",
-  measurementId: "G-Y1MGMGQWDK"
+  apiKey: "AIzaSyD7wJktOHu8-DcjUJuq2LNfc3tzbPYG51I",
+  authDomain: "vendas-5be3a.firebaseapp.com",
+  projectId: "vendas-5be3a",
+  storageBucket: "vendas-5be3a.firebasestorage.app",
+  messagingSenderId: "1081607347261",
+  appId: "1:1081607347261:web:042bcb33c48d115d6ade54",
+  measurementId: "G-VCGD6B2XET"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -21,8 +21,6 @@ let formaPagamentoAtual = "Dinheiro";
 let multiplicadorAtual = 1; 
 let contaFiadoOriginal_id = null; 
 let cpfNotaAtual = ""; 
-let cnpjNotaAtual = ""; 
-let nomeLojaCnpjAtual = "";
 
 let pagamentosCaixa = [];
 let valorFaltanteMisto = 0;
@@ -34,230 +32,20 @@ let modoCarrinho = false;
 let indiceCarrinhoSelecionado = -1;
 
 let produtosPorPeso = [];
-let indicePesoSelecionado = 0;
-let produtoPesoVendaSelecionado = null;
 let idEditandoPeso = null;
+
+// Lógica de Peso (F9)
+let indiceF9Selecionado = -1;
+let produtoF9Atual = null;
 
 let todasContasF4 = [];
 let contasFiltradasF4 = [];
 let indiceContaF4 = -1;
 
-// Variáveis de Modais Dinâmicos
-let produtoAguardandoVariacao = null;
-let indiceVariacaoSelecionada = 0;
-let avulsosCadastrados = [];
-let avulsosCadastradosFiltrados = [];
-let indiceAvulsoSelecionado = 0;
-let avulsoPendenteParaQuantidade = null; // Armazena o avulso antes de pedir a quantidade
-
-let produtosPesquisaF2 = [];
-let indicePesquisaF2 = -1;
-
 let taxasMaquininha = JSON.parse(localStorage.getItem("taxasMaquininha")) || { credito: 0, debito: 0, pix: 0 };
 let configImpressora = JSON.parse(localStorage.getItem("configImpressora")) || { 
-    nome: "Artes e Encantos", cnpj: "28.284.202/0001-21", endereco: "Rua Campos Sales, 2191", rodape: "Obrigado!" 
+    nome: "SUPERMERCADO MARCÃO", cnpj: "00.000.000/0001-00", endereco: "Rua Principal, 123", rodape: "Obrigado!" 
 };
-
-// =====================================================================
-// INICIALIZAÇÃO
-// =====================================================================
-document.addEventListener("DOMContentLoaded", async () => {
-    forcarLetrasMaiusculas();
-    injetarModaisAvulsoDinamicos(); 
-    injetarModalPesquisaProdutos(); // Adicionado para injetar o novo modal do F2
-
-    const campoNomeFiado = document.getElementById("novofiado-nome");
-    const campoNascFiado = document.getElementById("novofiado-nascimento");
-    if (campoNascFiado) {
-        campoNascFiado.addEventListener("change", function() {
-            verificarAniversarioCadastro(this.value, campoNomeFiado ? campoNomeFiado.value : "");
-        });
-    }
-
-    // Monitora a pesquisa global de produtos e avulsos
-    document.body.addEventListener('input', function(e) {
-        if (e.target && e.target.id === 'pesquisa-avulso-f8') {
-            const termo = e.target.value.toLowerCase();
-            avulsosCadastradosFiltrados = avulsosCadastrados.filter(p => p.nome.toLowerCase().includes(termo));
-            indiceAvulsoSelecionado = avulsosCadastradosFiltrados.length > 0 ? 0 : -1;
-            renderizarListaAvulsosCadastrados();
-        }
-        if (e.target && e.target.id === 'input-pesquisa-global') {
-            const termo = e.target.value.toLowerCase();
-            if (termo.trim() === "") {
-                produtosPesquisaF2 = produtosDoBanco.slice(0, 50);
-            } else {
-                produtosPesquisaF2 = produtosDoBanco.filter(p => p.nome.toLowerCase().includes(termo) || (p.codigo_barras && String(p.codigo_barras).includes(termo))).slice(0, 50);
-            }
-            indicePesquisaF2 = produtosPesquisaF2.length > 0 ? 0 : -1;
-            renderizarListaPesquisaF2();
-        }
-    });
-});
-
-function forcarLetrasMaiusculas() {
-    const aplicarNosInputs = () => {
-        document.querySelectorAll('input[type="text"], textarea').forEach(input => {
-            if (!input.dataset.maiusculaConfigurada) {
-                input.dataset.maiusculaConfigurada = "true";
-                input.style.textTransform = "uppercase"; 
-                input.addEventListener('input', function() {
-                    this.value = this.value.toUpperCase();
-                });
-            }
-        });
-    };
-    aplicarNosInputs();
-    const observer = new MutationObserver(aplicarNosInputs);
-    observer.observe(document.body, { childList: true, subtree: true });
-}
-
-// =====================================================================
-// INJEÇÃO DINÂMICA (F8 E F2)
-// =====================================================================
-function injetarModaisAvulsoDinamicos() {
-    if (!document.getElementById("modal-escolha-avulso")) {
-        const modalEscolha = document.createElement("div");
-        modalEscolha.id = "modal-escolha-avulso";
-        modalEscolha.className = "modal-overlay";
-        modalEscolha.innerHTML = `
-            <div class="modal-content" style="max-width: 450px; text-align: center; border: 3px solid #0055A4; border-radius: 12px; padding: 25px; background: #fff;">
-                <h3 style="color: #0055A4; margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-box-open"></i> PRODUTO AVULSO</h3>
-                <p style="color: #475569; font-weight: bold; margin-bottom: 20px;">Como deseja lançar este item?</p>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <button type="button" id="btn-avulso-cadastrado" onclick="abrirListaAvulsosCadastrados()" style="background: #0055A4; color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;">
-                        <span><i class="fa-solid fa-list-check" style="margin-right: 10px;"></i> 1. JÁ CADASTRADO</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                    <button type="button" id="btn-avulso-nahora" onclick="abrirModalAvulsoNaHora()" style="background: #10b981; color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;">
-                        <span><i class="fa-solid fa-bolt" style="margin-right: 10px;"></i> 2. DIGITAR NA HORA</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                </div>
-                <button type="button" onclick="fecharModal('modal-escolha-avulso')" style="margin-top: 20px; background: #ef4444; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">CANCELAR (ESC)</button>
-            </div>
-        `;
-        document.body.appendChild(modalEscolha);
-    }
-
-    if (!document.getElementById("modal-lista-avulsos-banco")) {
-        const modalLista = document.createElement("div");
-        modalLista.id = "modal-lista-avulsos-banco";
-        modalLista.className = "modal-overlay";
-        modalLista.innerHTML = `
-            <div class="modal-content" style="max-width: 800px; text-align: left; border: 3px solid #0055A4; border-radius: 12px; padding: 25px; background: #fff;">
-                <h3 style="color: #0055A4; margin-top: 0; text-align: center; font-size: 1.4rem;"><i class="fa-solid fa-boxes-stacked"></i> AVULSOS CADASTRADOS</h3>
-                <input type="text" id="pesquisa-avulso-f8" placeholder="Pesquisar avulso cadastrado..." style="width: 100%; padding: 12px; font-size: 1.2rem; border: 2px solid #b3d4ff; border-radius: 8px; margin-bottom: 15px; text-transform: uppercase;">
-                <p style="color: #64748b; font-size: 0.9rem; text-align: center; margin-bottom: 15px;">Use as setas para navegar e ENTER para selecionar:</p>
-                <div id="container-lista-avulsos-banco" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
-                <button type="button" onclick="fecharModal('modal-lista-avulsos-banco')" style="margin-top: 20px; background: #ef4444; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">VOLTAR (ESC)</button>
-            </div>
-        `;
-        document.body.appendChild(modalLista);
-    }
-}
-
-function injetarModalPesquisaProdutos() {
-    if (!document.getElementById("modal-pesquisa-produtos")) {
-        const modalPesquisa = document.createElement("div");
-        modalPesquisa.id = "modal-pesquisa-produtos";
-        modalPesquisa.className = "modal-overlay";
-        modalPesquisa.innerHTML = `
-            <div class="modal-content" style="max-width: 800px; text-align: left; border: 3px solid #0055A4; border-radius: 12px; padding: 25px; background: #fff;">
-                <h3 style="color: #0055A4; margin-top: 0; text-align: center; font-size: 1.4rem;"><i class="fa-solid fa-search"></i> PESQUISAR PRODUTO GERAL (F2)</h3>
-                <input type="text" id="input-pesquisa-global" placeholder="Digite o nome ou código de barras do produto..." style="width: 100%; padding: 12px; font-size: 1.2rem; border: 2px solid #b3d4ff; border-radius: 8px; margin-bottom: 15px; text-transform: uppercase;">
-                <p style="color: #64748b; font-size: 0.9rem; text-align: center; margin-bottom: 15px;">Use as setas para navegar e ENTER para adicionar ao carrinho.</p>
-                <div id="container-lista-pesquisa-global" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
-                <button type="button" onclick="fecharModal('modal-pesquisa-produtos')" style="margin-top: 20px; background: #ef4444; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">VOLTAR (ESC)</button>
-            </div>
-        `;
-        document.body.appendChild(modalPesquisa);
-    }
-}
-
-// =====================================================================
-// BAIXA AUTOMÁTICA DE ESTOQUE
-// =====================================================================
-async function finalizarVendaReal(imprimir) {
-    let nomePagamento = pagamentosCaixa.length === 1 ? pagamentosCaixa[0].forma : "Misto";
-    let totalPago = pagamentosCaixa.reduce((acc, p) => acc + p.valor, 0);
-    
-    let valorVendaRegistrada = (contaFiadoOriginal_id && totalPago < valorTotal) ? totalPago : valorTotal;
-    const agora = new Date();
-    
-    const vendaObj = {
-        data: (vendaEditandoId && dataOriginalVendaEditada) ? dataOriginalVendaEditada : agora.toLocaleDateString('pt-BR'),
-        hora: (vendaEditandoId && horaOriginalVendaEditada) ? horaOriginalVendaEditada : agora.toLocaleTimeString('pt-BR', { hour12: false }),
-        totalBruto: valorVendaRegistrada,
-        desconto: 0,
-        totalLiquido: valorVendaRegistrada, 
-        custoTaxas: 0,
-        pagamento: nomePagamento,
-        detalhesPagamento: pagamentosCaixa, 
-        itens: carrinho,
-        valorParaRelatorio: valorVendaRegistrada,
-        cliente_cpf: cpfNotaAtual 
-    };
-    
-    try {
-        for (let item of carrinho) {
-            if (item.codigo_barras && !item.codigo_barras.startsWith('PESO-')) {
-                const prodLocal = produtosDoBanco.find(p => p.codigo_barras === item.codigo_barras);
-                if (prodLocal) {
-                    if (prodLocal.variacoes && prodLocal.variacoes.length > 0) {
-                        let vIdx = prodLocal.variacoes.findIndex(v => v.nome === item.variacaoNome || v.nome === item.nome);
-                        if (vIdx > -1) {
-                            prodLocal.variacoes[vIdx].estoque = Math.max(0, (prodLocal.variacoes[vIdx].estoque || 0) - (item.quantidade || 1));
-                        }
-                    }
-                    prodLocal.estoque = Math.max(0, (prodLocal.estoque || 0) - (item.quantidade || 1));
-                    
-                    await fetch(`http://localhost:3000/api/produtos/${prodLocal.id || item.codigo_barras}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(prodLocal)
-                    }).catch(() => console.warn('Falha ao atualizar o estoque.'));
-                }
-            }
-        }
-
-        if (vendaEditandoId) {
-            await db.collection("vendas").doc(vendaEditandoId).set(vendaObj);
-            await fetch(`http://localhost:3000/api/vendas/${vendaEditandoId}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vendaObj)
-            }).catch(() => console.log('Offline server'));
-        } else {
-            await db.collection("vendas").add(vendaObj);
-            await fetch('http://localhost:3000/api/vendas', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vendaObj)
-            }).catch(() => console.log('Offline server'));
-        }
-
-        if (contaFiadoOriginal_id) {
-            const resp = await fetch(`http://localhost:3000/api/fiados/${contaFiadoOriginal_id}`);
-            if (resp.ok) {
-                const contaAtual = await resp.json();
-                if (valorFaltanteMisto > 0) {
-                    contaAtual.total = contaAtual.total - totalPago; 
-                } else {
-                    contaAtual.valorPago = contaAtual.total;
-                }
-                await fetch(`http://localhost:3000/api/fiados/${contaFiadoOriginal_id}`, { 
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(contaAtual)
-                });
-            }
-        }
-    } catch(e) { 
-        alert("Erro de conexão ao salvar a venda.");
-    }
-
-    if(imprimir === true) { imprimirNotinha(); }
-
-    fecharModal('modal-confirmar-impressao');
-    fecharModal('modal-pagamento');
-    limparCaixaEVisores();
-}
 
 document.addEventListener("DOMContentLoaded", async () => {
     await carregarCatalogoDoServidor();
@@ -281,17 +69,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("venda-barras").focus();
     atualizarVisorQuantidade(); 
 
-    const campoNomeFiado = document.getElementById("novofiado-nome");
-    if (campoNomeFiado) {
-        campoNomeFiado.addEventListener("input", function() {
-            this.value = this.value.toUpperCase();
-        });
-    }
-
     const campoLeitor = document.getElementById("venda-barras");
     campoLeitor.addEventListener("keypress", function(evento) {
         if (evento.key === "Enter") {
             evento.preventDefault();
+            
+            // --- CORREÇÃO: Se o campo estiver vazio, não faz a busca! ---
+            if (this.value.trim() === "") {
+                return; 
+            }
+            // --------------------------------------------------------------
+
             let codigo = this.value.trim().replace(/^0+/, ''); 
             if(codigo === '') codigo = '0';
             adicionarProduto(codigo);
@@ -299,138 +87,63 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    // =========================================================
-    // CONTROLE GLOBAL DE TECLADO (ESC, ENTER E ATALHOS)
-    // =========================================================
     document.addEventListener("keydown", (e) => {
         const modalImpressaoAberto = document.getElementById('modal-confirmar-impressao').classList.contains('active');
-        const modalAtivo = document.querySelector('.modal-overlay.active');
-
-        // PRIORIDADE 1: O BOTÃO ESCAPE (FECHAR TUDO / LIMPAR)
-        if (e.key === "Escape") {
-            e.preventDefault();
-            if (modalImpressaoAberto) {
-                fecharModal('modal-confirmar-impressao');
-            } else if (modalAtivo) {
-                document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
-                setTimeout(() => document.getElementById("venda-barras").focus(), 50); // Garante retorno ao leitor
-            } else if (modoCarrinho) {
-                modoCarrinho = false;
-                indiceCarrinhoSelecionado = -1;
-                atualizarTela();
-                document.getElementById("venda-barras").focus();
-            } else {
-                window.location.href = "index.html";
-            }
-            return; 
-        }
-
         if (modalImpressaoAberto) {
             if (e.key === "F1") { e.preventDefault(); confirmarVendaComImpressao(true); }
             if (e.key === "F2") { e.preventDefault(); confirmarVendaComImpressao(false); }
+            if (e.key === "Escape") { e.preventDefault(); fecharModal('modal-confirmar-impressao'); }
             return; 
         }
 
-        // TRAVA DO ENTER NOS MODAIS PRA NÃO DISPARAR O LEITOR
-        if (e.key === "Enter" && modalAtivo) {
-            if (modalAtivo.id === 'modal-quantidade') { e.preventDefault(); confirmarQuantidade(); return; }
-            if (modalAtivo.id === 'modal-cpf') { e.preventDefault(); confirmarCPF(); return; }
-            if (modalAtivo.id === 'modal-cadastrar-fiado') { e.preventDefault(); salvarNovoFiadoNoPDV(); return; }
-            if (modalAtivo.id === 'modal-cnpj') { e.preventDefault(); confirmarCNPJ(); return; }
-        }
+        const modalAtivo = document.querySelector('.modal-overlay.active');
 
-        // NAVEGAÇÃO PESQUISA F2 (GLOBAL)
-        if (modalAtivo && modalAtivo.id === 'modal-pesquisa-produtos') {
+        // NAVEGAÇÃO NO MODAL DO F9
+        if (modalAtivo && modalAtivo.id === 'modal-f9-lista') {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                if (indicePesquisaF2 < produtosPesquisaF2.length - 1) { indicePesquisaF2++; renderizarListaPesquisaF2(); }
-            } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                if (indicePesquisaF2 > 0) { indicePesquisaF2--; renderizarListaPesquisaF2(); }
-            } else if (e.key === "Enter") {
-                e.preventDefault();
-                if (produtosPesquisaF2.length > 0) selecionarProdutoF2(indicePesquisaF2);
-            }
-            return;
-        }
-
-        // NAVEGAÇÃO MODAL DE ESCOLHA AVULSO (F8 INICIAL)
-        if (modalAtivo && modalAtivo.id === 'modal-escolha-avulso') {
-            if (e.key === "1" || e.key === "F1") { e.preventDefault(); abrirListaAvulsosCadastrados(); return; }
-            if (e.key === "2" || e.key === "F2") { e.preventDefault(); abrirModalAvulsoNaHora(); return; }
-        }
-
-        // NAVEGAÇÃO MODAL LISTA DE AVULSOS CADASTRADOS (F8 -> 1)
-        if (modalAtivo && modalAtivo.id === 'modal-lista-avulsos-banco') {
-            if (e.key === "ArrowDown") {
-                e.preventDefault();
-                if (indiceAvulsoSelecionado < avulsosCadastradosFiltrados.length - 1) {
-                    indiceAvulsoSelecionado++;
-                    renderizarListaAvulsosCadastrados();
+                if (indiceF9Selecionado < produtosPorPeso.length - 1) {
+                    indiceF9Selecionado++;
+                    atualizarEstilosListaF9();
                 }
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                if (indiceAvulsoSelecionado > 0) {
-                    indiceAvulsoSelecionado--;
-                    renderizarListaAvulsosCadastrados();
+                if (indiceF9Selecionado > 0) {
+                    indiceF9Selecionado--;
+                    atualizarEstilosListaF9();
                 }
             } else if (e.key === "Enter") {
                 e.preventDefault();
-                if (avulsosCadastradosFiltrados.length > 0) {
-                    selecionarAvulsoCadastrado(indiceAvulsoSelecionado);
+                if (indiceF9Selecionado >= 0 && produtosPorPeso.length > 0) {
+                    selecionarProdutoF9(produtosPorPeso[indiceF9Selecionado]);
                 }
             }
-            return;
-        }
-
-        // OUTROS MODAIS
-        if (modalAtivo && modalAtivo.id === 'modal-variacoes') {
-            if (e.key === "ArrowDown") {
-                e.preventDefault();
-                if (indiceVariacaoSelecionada < produtoAguardandoVariacao.variacoes.length - 1) {
-                    indiceVariacaoSelecionada++; renderizarListaVariacoes();
-                }
-            } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                if (indiceVariacaoSelecionada > 0) {
-                    indiceVariacaoSelecionada--; renderizarListaVariacoes();
-                }
-            } else if (e.key === "Enter") {
-                e.preventDefault(); confirmarVariacao(indiceVariacaoSelecionada);
-            }
-            return;
         }
 
         if (modalAtivo && modalAtivo.id === 'modal-selecionar-conta') {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                if (indiceContaF4 < contasFiltradasF4.length - 1) { indiceContaF4++; atualizarEstilosF4(); }
+                if (indiceContaF4 < contasFiltradasF4.length - 1) {
+                    indiceContaF4++;
+                    atualizarEstilosF4();
+                }
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                if (indiceContaF4 > 0) { indiceContaF4--; atualizarEstilosF4(); }
-            } else if (e.key === "Enter" && (!document.activeElement || !document.activeElement.classList.contains('btn-conta-f4'))) {
-                e.preventDefault();
-                if (indiceContaF4 >= 0 && contasFiltradasF4.length > 0) {
-                    const c = contasFiltradasF4[indiceContaF4];
-                    processarFiadoExistente(c.id, c.cliente);
+                if (indiceContaF4 > 0) {
+                    indiceContaF4--;
+                    atualizarEstilosF4();
+                }
+            } else if (e.key === "Enter") {
+                if (document.activeElement.tagName !== 'BUTTON' || document.activeElement.classList.contains('btn-conta-f4')) {
+                    e.preventDefault();
+                    if (indiceContaF4 >= 0 && contasFiltradasF4.length > 0) {
+                        const c = contasFiltradasF4[indiceContaF4];
+                        processarFiadoExistente(c.id, c.cliente);
+                    }
                 }
             }
-            return;
         }
 
-        if (modalAtivo && modalAtivo.id === 'modal-venda-peso') {
-            const passo1Ativo = document.getElementById('passo-1-peso').style.display !== 'none';
-            if (passo1Ativo) {
-                if (e.key === "ArrowDown") { e.preventDefault(); if (indicePesoSelecionado < produtosPorPeso.length - 1) indicePesoSelecionado++; renderizarListaVendaPeso(); }
-                if (e.key === "ArrowUp") { e.preventDefault(); if (indicePesoSelecionado > 0) indicePesoSelecionado--; renderizarListaVendaPeso(); }
-                if (e.key === "Enter") { e.preventDefault(); selecionarProdutoPesoParaVenda(indicePesoSelecionado); }
-            } else {
-                if (e.key === "Enter") { e.preventDefault(); confirmarVendaPeso(); }
-            }
-            return;
-        }
-
-        // NAVEGAÇÃO CARRINHO (TAB)
         if (e.key === "Tab" && !modalAtivo) {
             e.preventDefault();
             if (carrinho.length > 0) {
@@ -444,59 +157,64 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (modoCarrinho && !modalAtivo) {
-            if (e.key === "ArrowDown") { e.preventDefault(); if (indiceCarrinhoSelecionado < carrinho.length - 1) indiceCarrinhoSelecionado++; atualizarTela(); }
-            if (e.key === "ArrowUp") { e.preventDefault(); if (indiceCarrinhoSelecionado > 0) indiceCarrinhoSelecionado--; atualizarTela(); }
-            if (e.key === "Delete") { e.preventDefault(); removerItemDoCarrinho(); }
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (indiceCarrinhoSelecionado < carrinho.length - 1) indiceCarrinhoSelecionado++;
+                atualizarTela();
+            }
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                if (indiceCarrinhoSelecionado > 0) indiceCarrinhoSelecionado--;
+                atualizarTela();
+            }
+            if (e.key === "Delete") {
+                e.preventDefault();
+                removerItemDoCarrinho();
+            }
+            if (e.key === "Escape") {
+                modoCarrinho = false;
+                indiceCarrinhoSelecionado = -1;
+                atualizarTela();
+                document.getElementById("venda-barras").focus();
+            }
             return; 
         }
 
-        if (["F1", "F2", "F3", "F4", "F7", "F8", "F9", "F12"].includes(e.key)) e.preventDefault();
+        if (e.key === "Escape") {
+            if (modalAtivo) {
+                document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+                document.getElementById("venda-barras").focus();
+            } else window.location.href = "index.html";
+        }
 
-        // ATALHOS CAIXA LIVRE
+        if (["F2", "F3", "F4", "F7", "F8", "F9", "F12"].includes(e.key)) e.preventDefault();
+
         if (!modalAtivo && !modoCarrinho) {
-            if (e.key === "F1") abrirModalCNPJ(); 
             if (e.key === "F2") abrirPesquisa();
             if (e.key === "F3") abrirQuantidade();
             if (e.key === "F4") abrirModalContas();
             if (e.key === "F7") abrirModalCPF();
-            if (e.key === "F8") abrirEscolhaAvulso(); 
-            if (e.key === "F9") abrirModalVendaPeso();
+            if (e.key === "F8") abrirModalAvulso();
+            if (e.key === "F9") abrirModalF9();
             if (e.key === "F12") abrirPagamento();
             if (e.key === "Delete") cancelarVenda(); 
         }
 
         if (modalAtivo && modalAtivo.id === 'modal-pagamento') {
             if (e.key === "F1") selecionarFormaPagamento('Dinheiro');
-            if (e.key === "F2") selecionarFormaPagamento('Cartão');
-            if (e.key === "F3") selecionarFormaPagamento('PIX');
+            if (e.key === "F2") selecionarFormaPagamento('Cartão de Crédito');
+            if (e.key === "F3") selecionarFormaPagamento('Cartão de Débito');
+            if (e.key === "F4") selecionarFormaPagamento('PIX');
         }
+
+        // --- CORREÇÃO: Adicionado e.preventDefault() nas confirmações de modal ---
+        if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-quantidade') { e.preventDefault(); confirmarQuantidade(); }
+        if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-cpf') { e.preventDefault(); confirmarCPF(); }
+        if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-cadastrar-fiado') { e.preventDefault(); salvarNovoFiadoNoPDV(); }
+        if (e.key === "Enter" && modalAtivo && modalAtivo.id === 'modal-f9-peso') { e.preventDefault(); confirmarPesoF9(); }
+        // -------------------------------------------------------------------------
     });
 });
-
-function verificarAniversarioCadastro(dataNascimento, nome) {
-    if (!dataNascimento) return;
-    const hoje = new Date();
-    const diaHoje = String(hoje.getDate()).padStart(2, '0');
-    const mesHoje = String(hoje.getMonth() + 1).padStart(2, '0');
-
-    let diaNasc, mesNasc;
-    if (dataNascimento.includes('-')) {
-        const partes = dataNascimento.split('-');
-        diaNasc = partes[2]; mesNasc = partes[1];
-    } else if (dataNascimento.includes('/')) {
-        const partes = dataNascimento.split('/');
-        diaNasc = partes[0]; mesNasc = partes[1];
-    }
-
-    if (diaNasc === diaHoje && mesNasc === mesHoje) {
-        const nomeCliente = nome.trim() !== "" ? nome : "Este cliente";
-        setTimeout(() => {
-            alert(`🎉 HOJE É O ANIVERSÁRIO DE ${nomeCliente}! 🎂\nAproveite para parabenizá-lo!`);
-            const modalAtivo = document.querySelector('.modal-overlay.active');
-            if (!modalAtivo) document.getElementById("venda-barras").focus();
-        }, 100);
-    }
-}
 
 async function carregarCatalogoDoServidor() {
     try {
@@ -529,7 +247,7 @@ async function carregarVendaParaEdicao(id) {
             
             atualizarTela();
         }
-    } catch(e) { console.warn("Erro ao carregar venda para edição", e); }
+    } catch(e) { console.warn("Erro ao carregar venda do Firebase para edição", e); }
 }
 
 async function detectarFiadoNaUrl() {
@@ -579,103 +297,33 @@ async function detectarFiadoNaUrl() {
 function configurarMascaras() {
     const configMoeda = { mask: Number, scale: 2, signed: false, thousandsSeparator: '.', padFractionalZeros: true, normalizeZeros: true, radix: ',' };
     IMask(document.getElementById('pagamento-valor-recebido'), configMoeda);
-    if(document.getElementById('config-peso-preco')) IMask(document.getElementById('config-peso-preco'), configMoeda);
-    
-    function aplicarMascaraMoedaAutomatica(inputElement) {
-        if (!inputElement) return;
-        inputElement.addEventListener('input', function(e) {
-            let valor = this.value.replace(/\D/g, ''); 
-            if (valor === '') { this.value = ''; return; }
-            valor = (parseInt(valor, 10) / 100).toFixed(2);
-            valor = valor.replace('.', ',');
-            valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-            this.value = valor;
-        });
-    }
+    IMask(document.getElementById('avulso-valor'), configMoeda);
+    IMask(document.getElementById('rapido-valor'), configMoeda);
+    IMask(document.getElementById('config-peso-preco'), configMoeda);
 
-    if(document.getElementById('avulso-valor')) aplicarMascaraMoedaAutomatica(document.getElementById('avulso-valor'));
-    if(document.getElementById('rapido-valor')) aplicarMascaraMoedaAutomatica(document.getElementById('rapido-valor'));
-    
-    const inputPesoKg = document.getElementById('input-peso-kg');
-    if (inputPesoKg) {
-        inputPesoKg.addEventListener('input', function(e) {
-            let valor = this.value.replace(/\D/g, ''); 
-            if (valor === '') { this.value = ''; return; }
-            valor = parseInt(valor, 10).toString().padStart(4, '0');
-            let inteiro = valor.slice(0, -3);
-            let decimal = valor.slice(-3);
-            this.value = inteiro + ',' + decimal;
-        });
-    }
-
-    if(document.getElementById('input-cpf-modal')) IMask(document.getElementById('input-cpf-modal'), { mask: '000.000.000-00' });
-    if(document.getElementById('novofiado-cpf')) IMask(document.getElementById('novofiado-cpf'), { mask: '000.000.000-00' });
-    if(document.getElementById('input-cnpj-modal')) IMask(document.getElementById('input-cnpj-modal'), { mask: '00.000.000/0000-00' });
-    if(document.getElementById('novofiado-telefone')) IMask(document.getElementById('novofiado-telefone'), { mask: '(00) 00000-0000' });
+    IMask(document.getElementById('input-cpf-modal'), { mask: '000.000.000-00' });
+    IMask(document.getElementById('novofiado-cpf'), { mask: '000.000.000-00' });
+    IMask(document.getElementById('novofiado-telefone'), { mask: '(00) 00000-0000' });
 }
 
 function aplicarConfiguracoesNaTela() {
-    if(document.getElementById("cupom-nome-mercado")) document.getElementById("cupom-nome-mercado").innerText = configImpressora.nome;
-    if(document.getElementById("cupom-cnpj")) document.getElementById("cupom-cnpj").innerText = "CNPJ: " + configImpressora.cnpj;
-    if(document.getElementById("cupom-endereco")) document.getElementById("cupom-endereco").innerText = configImpressora.endereco;
-    if(document.getElementById("cupom-rodape")) document.getElementById("cupom-rodape").innerText = configImpressora.rodape;
+    document.getElementById("cupom-nome-mercado").innerText = configImpressora.nome;
+    document.getElementById("cupom-cnpj").innerText = "CNPJ: " + configImpressora.cnpj;
+    document.getElementById("cupom-endereco").innerText = configImpressora.endereco;
+    document.getElementById("cupom-rodape").innerText = configImpressora.rodape;
 }
 
 function fecharModal(id) { 
-    const el = document.getElementById(id);
-    if(el) el.classList.remove('active'); 
-    setTimeout(() => { document.getElementById("venda-barras").focus(); }, 50);
+    document.getElementById(id).classList.remove('active'); 
+    document.getElementById("venda-barras").focus();
 }
 
-// =====================================================================
-// NOVA PESQUISA GLOBAL (F2)
-// =====================================================================
-function abrirPesquisa() {
-    document.getElementById('modal-pesquisa-produtos').classList.add('active');
-    const inputPesquisa = document.getElementById('input-pesquisa-global');
-    inputPesquisa.value = '';
-    
-    produtosPesquisaF2 = produtosDoBanco.slice(0, 50); // Mostrar 50 primeiros de início
-    indicePesquisaF2 = produtosPesquisaF2.length > 0 ? 0 : -1;
-    
-    renderizarListaPesquisaF2();
-    setTimeout(() => inputPesquisa.focus(), 100);
-}
-
-function renderizarListaPesquisaF2() {
-    const container = document.getElementById("container-lista-pesquisa-global");
-    container.innerHTML = "";
-    
-    if (produtosPesquisaF2.length === 0) {
-        container.innerHTML = "<p style='text-align: center; color: #ef4444; font-weight: bold; padding: 20px;'>Nenhum produto encontrado com essa pesquisa.</p>";
-        return;
-    }
-
-    produtosPesquisaF2.forEach((prod, index) => {
-        let selecionadoStyle = index === indicePesquisaF2 ? "background: #0055A4; color: white;" : "background: #f0f8ff; color: #003366;";
-        let precoStyle = index === indicePesquisaF2 ? "white" : "#10b981";
-        
-        container.innerHTML += `
-            <button type="button" onclick="selecionarProdutoF2(${index})" style="${selecionadoStyle} padding: 14px; border: 2px solid #b3d4ff; border-radius: 8px; font-size: 1.1rem; font-weight: bold; text-align: left; cursor: pointer; transition: 0.1s; display: flex; justify-content: space-between; align-items: center;">
-                <span>${prod.nome} <small style="font-weight:normal; opacity:0.8;">(${prod.codigo_barras || 'Sem código'})</small></span>
-                <span style="color: ${precoStyle}; font-weight: 900;">R$ ${parseFloat(prod.preco || 0).toFixed(2).replace('.',',')}</span>
-            </button>
-        `;
-    });
-
-    const btnAtivo = container.children[indicePesquisaF2];
-    if (btnAtivo) btnAtivo.scrollIntoView({ block: "nearest", behavior: "smooth" });
-}
-
-function selecionarProdutoF2(index) {
-    const escolhido = produtosPesquisaF2[index];
-    fecharModal("modal-pesquisa-produtos");
-    adicionarProduto(escolhido.codigo_barras);
-}
+function abrirPesquisa() { alert("Tela de pesquisa de produtos será implementada em breve."); }
 
 function abrirConfigPeso() {
     idEditandoPeso = null; 
     document.getElementById('config-peso-nome').value = '';
+    document.getElementById('config-peso-codigo').value = '';
     document.getElementById('config-peso-preco').value = '';
     document.getElementById('modal-config-peso').classList.add('active');
     renderizarListaConfigPeso();
@@ -684,12 +332,15 @@ function abrirConfigPeso() {
 
 async function salvarProdutoPeso() {
     const nome = document.getElementById('config-peso-nome').value.trim();
-    const precoStr = document.getElementById('config-peso-preco').value.replace(/\./g, '').replace(',', '.');
-    const preco = parseFloat(precoStr);
+    const codigoStr = document.getElementById('config-peso-codigo').value.trim();
+    const codigo = parseInt(codigoStr, 10);
+    
+    let precoStr = document.getElementById("config-peso-preco").value.replace(/\./g, '').replace(',', '.');
+    let precoKg = parseFloat(precoStr) || 0;
 
-    if(!nome || !preco || preco <= 0) return alert("Preencha o nome e um preço válido!");
+    if(!nome) return alert("Preencha o nome do produto!");
 
-    const payload = { nome: nome, precoKg: preco };
+    const payload = { nome: nome, codigo: codigo || 0, precoKg: precoKg };
 
     try {
         if (idEditandoPeso) {
@@ -706,15 +357,17 @@ async function salvarProdutoPeso() {
     } catch(e) { console.error("Erro ao salvar produto por peso", e); }
     
     document.getElementById('config-peso-nome').value = '';
+    document.getElementById('config-peso-codigo').value = '';
     document.getElementById('config-peso-preco').value = '';
     renderizarListaConfigPeso();
     document.getElementById('config-peso-nome').focus();
 }
 
-function editarProdutoPeso(id, nome, preco) {
+function editarProdutoPeso(id, nome, codigo, precoKg) {
     idEditandoPeso = id;
     document.getElementById('config-peso-nome').value = nome;
-    document.getElementById('config-peso-preco').value = preco.toFixed(2).replace('.', ',');
+    document.getElementById('config-peso-codigo').value = codigo;
+    document.getElementById('config-peso-preco').value = parseFloat(precoKg).toFixed(2).replace('.', ',');
     document.getElementById('config-peso-nome').focus();
 }
 
@@ -730,15 +383,15 @@ async function excluirProdutoPeso(id) {
 
 function renderizarListaConfigPeso() {
     const lista = document.getElementById('lista-config-peso');
-    if(!lista) return;
     lista.innerHTML = '';
     produtosPorPeso.forEach((prod) => {
+        let precoAmostra = (prod.precoKg > 0) ? ` | R$ ${prod.precoKg.toFixed(2).replace('.',',')}/Kg` : '';
         lista.innerHTML += `
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px; border: 1px solid #b3d4ff; background: #f8fafc; border-radius: 8px; margin-bottom: 8px;">
                 <span style="font-weight: 900; color: #0055A4; font-size: 1.1rem; flex: 1;">${prod.nome}</span>
                 <div style="display:flex; align-items: center; gap: 10px;">
-                    <span style="font-weight: bold; color: #10b981; margin-right: 10px;">R$ ${prod.precoKg.toFixed(2).replace('.',',')}/kg</span>
-                    <button onclick="editarProdutoPeso(${prod.id}, '${prod.nome}', ${prod.precoKg})" title="Editar" style="background: #f59e0b; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;"><i class="fa-solid fa-pen"></i></button>
+                    <span style="font-weight: bold; color: #10b981; margin-right: 10px;">Cód: ${prod.codigo} ${precoAmostra}</span>
+                    <button onclick="editarProdutoPeso(${prod.id}, '${prod.nome}', ${prod.codigo}, ${prod.precoKg})" title="Editar" style="background: #f59e0b; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="excluirProdutoPeso(${prod.id})" title="Excluir" style="background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>
@@ -746,183 +399,138 @@ function renderizarListaConfigPeso() {
     });
 }
 
-function abrirModalVendaPeso() {
-    if(produtosPorPeso.length === 0) {
-        alert("Cadastre produtos por peso primeiro clicando no ícone de balança!");
-        return;
-    }
-    document.getElementById('modal-venda-peso').classList.add('active');
-    document.getElementById('passo-1-peso').style.display = 'block';
-    document.getElementById('passo-2-peso').style.display = 'none';
-    indicePesoSelecionado = 0;
-    renderizarListaVendaPeso();
-}
-
-function renderizarListaVendaPeso() {
-    const lista = document.getElementById('lista-peso-venda');
-    if(!lista) return;
-    lista.innerHTML = '';
-    produtosPorPeso.forEach((prod, index) => {
-        const selecionado = index === indicePesoSelecionado ? 'selecionado' : '';
-        lista.innerHTML += `
-            <div class="item-peso ${selecionado}" onclick="selecionarProdutoPesoParaVenda(${index})">
-                <span>${prod.nome}</span>
-                <span>R$ ${prod.precoKg.toFixed(2).replace('.',',')}/kg</span>
+// ======================= F9 - LÓGICA DE PESO =======================
+function abrirModalF9() {
+    if (produtosPorPeso.length === 0) return alert("Nenhum produto de peso cadastrado. Cadastre no ícone da balança!");
+    
+    indiceF9Selecionado = 0;
+    document.getElementById('modal-f9-lista').classList.add('active');
+    
+    const listaHtml = document.getElementById('lista-f9-produtos');
+    listaHtml.innerHTML = "";
+    
+    produtosPorPeso.forEach((p, index) => {
+        let precoStr = (p.precoKg > 0) ? `R$ ${p.precoKg.toFixed(2).replace('.',',')}/Kg` : 'Sem Preço Kg';
+        listaHtml.innerHTML += `
+            <div class="item-peso" id="f9-item-${index}" onclick="selecionarProdutoF9(produtosPorPeso[${index}])">
+                <span>${p.nome}</span>
+                <span>${precoStr}</span>
             </div>
         `;
     });
-    const itemAtivo = lista.querySelector('.selecionado');
-    if(itemAtivo) itemAtivo.scrollIntoView({block: "nearest"});
-}
-
-function selecionarProdutoPesoParaVenda(index) {
-    produtoPesoVendaSelecionado = produtosPorPeso[index];
-    document.getElementById('passo-1-peso').style.display = 'none';
-    document.getElementById('passo-2-peso').style.display = 'block';
-    document.getElementById('titulo-produto-selecionado').innerText = produtoPesoVendaSelecionado.nome.toUpperCase();
-    document.getElementById('input-peso-kg').value = '';
-    setTimeout(() => document.getElementById('input-peso-kg').focus(), 100);
-}
-
-function confirmarVendaPeso() {
-    let pesoStr = document.getElementById('input-peso-kg').value.replace(/\./g, '').replace(',', '.');
-    let peso = parseFloat(pesoStr);
     
-    if(!peso || peso <= 0) return alert("Informe um peso válido!");
+    atualizarEstilosListaF9();
+}
 
-    const subtotal = produtoPesoVendaSelecionado.precoKg * peso;
+function atualizarEstilosListaF9() {
+    const itens = document.querySelectorAll('.item-peso');
+    itens.forEach((item, index) => {
+        if (index === indiceF9Selecionado) {
+            item.classList.add('selecionada');
+            item.style.backgroundColor = "#ddd6fe"; // Cor tema F9 (roxo)
+            item.style.borderLeft = "5px solid #8b5cf6";
+            item.style.fontWeight = "bold";
+            item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        } else {
+            item.classList.remove('selecionada');
+            item.style.backgroundColor = "transparent";
+            item.style.borderLeft = "none";
+            item.style.fontWeight = "normal";
+        }
+    });
+}
 
-    const itemVenda = {
-        codigo_barras: 'PESO-' + Date.now(),
-        nome: "(Kg) " + produtoPesoVendaSelecionado.nome,
-        preco: produtoPesoVendaSelecionado.precoKg,
-        quantidade: peso,
-        subtotal: subtotal
+function selecionarProdutoF9(produto) {
+    if (!produto.precoKg || produto.precoKg <= 0) return alert("Esse produto não tem Preço por Kg cadastrado!");
+    
+    produtoF9Atual = produto;
+    fecharModal('modal-f9-lista');
+    
+    document.getElementById('f9-produto-nome').innerText = produto.nome;
+    document.getElementById('f9-produto-preco').innerText = `R$ ${produto.precoKg.toFixed(2).replace('.',',')} / Kg`;
+    document.getElementById('input-f9-peso').value = "";
+    
+    document.getElementById('modal-f9-peso').classList.add('active');
+    setTimeout(() => document.getElementById('input-f9-peso').focus(), 100);
+}
+
+// Máscara que coloca a vírgula automática ao chegar no 4º dígito (Ex: 1000 vira 1,000)
+function formatarPesoF9(input) {
+    let valor = input.value.replace(/\D/g, ''); // Deixa apenas números
+    
+    if (valor.length >= 4) {
+        valor = valor.substring(0, valor.length - 3) + ',' + valor.substring(valor.length - 3);
+    }
+    
+    input.value = valor;
+}
+
+function confirmarPesoF9() {
+    if (!produtoF9Atual) return;
+    
+    let pesoStr = document.getElementById('input-f9-peso').value.replace(',', '.');
+    let pesoKg = parseFloat(pesoStr);
+    
+    if (!pesoKg || pesoKg <= 0) return alert("Digite um peso válido!");
+    
+    let preco = produtoF9Atual.precoKg;
+    let subtotalCalculado = preco * pesoKg;
+    
+    const produtoF9Carrinho = {
+        codigo_barras: 'F9-' + Date.now(),
+        nome: "(Peso) " + produtoF9Atual.nome,
+        preco: preco,
+        quantidade: pesoKg,
+        subtotal: subtotalCalculado
     };
 
-    carrinho.push(itemVenda);
+    carrinho.push(produtoF9Carrinho);
     
-    document.getElementById("display-nome-produto").innerText = itemVenda.nome;
-    document.getElementById("display-unit").innerText = itemVenda.preco.toFixed(2).replace('.',',');
-    document.getElementById("display-subtotal").innerText = itemVenda.subtotal.toFixed(2).replace('.',',');
+    document.getElementById("display-nome-produto").innerText = produtoF9Carrinho.nome;
+    document.getElementById("display-unit").innerText = preco.toFixed(2).replace('.',',');
+    document.getElementById("display-subtotal").innerText = subtotalCalculado.toFixed(2).replace('.',',');
 
     multiplicadorAtual = 1;
     atualizarVisorQuantidade();
     atualizarTela();
-    fecharModal('modal-venda-peso');
-}
-
-// =====================================================================
-// PRODUTOS AVULSOS (F8)
-// =====================================================================
-function abrirEscolhaAvulso() {
-    document.getElementById("modal-escolha-avulso").classList.add("active");
-}
-
-function abrirListaAvulsosCadastrados() {
-    fecharModal("modal-escolha-avulso");
-    avulsosCadastrados = produtosDoBanco.filter(p => 
-        (p.codigo_barras && String(p.codigo_barras).startsWith('AVULSO-')) || 
-        p.categoria === 'AVULSOS' || 
-        (p.nome && p.nome.includes('AVULSO'))
-    );
     
-    avulsosCadastradosFiltrados = [...avulsosCadastrados];
-    indiceAvulsoSelecionado = 0;
-    renderizarListaAvulsosCadastrados();
-    
-    document.getElementById("modal-lista-avulsos-banco").classList.add("active");
-    
-    setTimeout(() => {
-        const inputF8 = document.getElementById("pesquisa-avulso-f8");
-        if (inputF8) { inputF8.value = ""; inputF8.focus(); }
-    }, 100);
+    fecharModal('modal-f9-peso');
 }
+// ===================================================================
 
-function renderizarListaAvulsosCadastrados() {
-    const container = document.getElementById("container-lista-avulsos-banco");
-    container.innerHTML = "";
-
-    if (avulsosCadastradosFiltrados.length === 0) {
-        container.innerHTML = `<p style="text-align: center; color: #ef4444; font-weight: bold; padding: 20px;">Nenhum avulso encontrado na pesquisa ou sem estoque.</p>`;
-        return;
-    }
-
-    avulsosCadastradosFiltrados.forEach((prod, index) => {
-        let selecionadoStyle = index === indiceAvulsoSelecionado ? "background: #0055A4; color: white;" : "background: #f0f8ff; color: #003366;";
-        let precoStyle = index === indiceAvulsoSelecionado ? "white" : "#10b981";
-        
-        // Remove limpa a palavra (AVULSO) para mostrar bonitinho
-        let nomeLimpo = prod.nome.replace(/\(AVULSO\)\s*/g, '').trim();
-
-        container.innerHTML += `
-            <button type="button" onclick="selecionarAvulsoCadastrado(${index})" style="${selecionadoStyle} padding: 14px; border: 2px solid #b3d4ff; border-radius: 8px; font-size: 1.1rem; font-weight: bold; text-align: left; cursor: pointer; transition: 0.1s; display: flex; justify-content: space-between; align-items: center;">
-                <span><i class="fa-solid fa-tag" style="margin-right: 8px;"></i> ${nomeLimpo}</span>
-                <span style="color: ${precoStyle}; font-weight: 900;">R$ ${parseFloat(prod.preco || 0).toFixed(2).replace('.',',')}</span>
-            </button>
-        `;
-    });
-
-    const btnAtivo = container.children[indiceAvulsoSelecionado];
-    if (btnAtivo) btnAtivo.scrollIntoView({ block: "nearest", behavior: "smooth" });
-}
-
-function selecionarAvulsoCadastrado(index) {
-    const escolhido = avulsosCadastradosFiltrados[index];
-    fecharModal("modal-lista-avulsos-banco");
-    
-    // Salva pendente para abrir e pedir a quantidade
-    avulsoPendenteParaQuantidade = escolhido;
-    abrirQuantidade();
-}
-
-function abrirModalAvulsoNaHora() {
-    fecharModal("modal-escolha-avulso");
+function abrirModalAvulso() {
     document.getElementById("avulso-nome").value = "";
     document.getElementById("avulso-valor").value = "";
     document.getElementById("modal-avulso").classList.add("active");
     setTimeout(() => document.getElementById("avulso-nome").focus(), 100);
 }
 
-async function confirmarAvulso() {
+function confirmarAvulso() {
     let nome = document.getElementById("avulso-nome").value.trim();
     let valStr = document.getElementById("avulso-valor").value.replace(/\./g, '').replace(',', '.');
     let preco = parseFloat(valStr);
 
     if (!nome || !preco || preco <= 0) return alert("Preencha o nome e um valor válido!");
 
-    let codigoGerado = 'AVULSO-' + Date.now();
-    // AQUI RETIRAMOS O TEXTO "(AVULSO)" DA FRENTE DA PALAVRA NA NOTA!
-    let nomeFormatado = nome.toUpperCase();
-
-    // === CADASTRO AUTOMÁTICO NO ESTOQUE ===
-    const novoAvulsoEstoque = {
-        codigo_barras: codigoGerado,
-        nome: nomeFormatado,
-        categoria: "AVULSOS",
-        marca: "AVULSO",
-        unidade: "UN",
-        variacoes: [{ nome: nomeFormatado, preco: preco, estoque: 9999 }],
+    const produtoAvulso = {
+        codigo_barras: 'AVULSO-' + Date.now(),
+        nome: "(Avulso) " + nome,
         preco: preco,
-        estoque: 9999
+        quantidade: multiplicadorAtual,
+        subtotal: preco * multiplicadorAtual
     };
 
-    try {
-        await fetch("http://localhost:3000/api/produtos", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(novoAvulsoEstoque)
-        });
-        produtosDoBanco.push(novoAvulsoEstoque);
-    } catch(e) { console.warn("Erro ao salvar avulso automaticamente no banco."); }
-    // ======================================
-
-    fecharModal("modal-avulso");
+    carrinho.push(produtoAvulso);
     
-    // Deixa salvo pendente e abre a tela de pedir a quantidade
-    avulsoPendenteParaQuantidade = novoAvulsoEstoque;
-    abrirQuantidade();
+    document.getElementById("display-nome-produto").innerText = produtoAvulso.nome;
+    document.getElementById("display-unit").innerText = preco.toFixed(2).replace('.',',');
+    document.getElementById("display-subtotal").innerText = produtoAvulso.subtotal.toFixed(2).replace('.',',');
+
+    multiplicadorAtual = 1;
+    atualizarVisorQuantidade();
+    atualizarTela();
+    fecharModal("modal-avulso");
 }
-// =====================================================================
 
 function abrirCadastroRapido(codigoBarras) {
     document.getElementById("rapido-barras").value = codigoBarras;
@@ -972,109 +580,12 @@ function abrirModalCPF() {
         input.value = cpfNotaAtual; input.focus();
     }, 100);
 }
-
-async function confirmarCPF() {
+function confirmarCPF() {
     let cpf = document.getElementById('input-cpf-modal').value.trim();
-    
-    if (!cpf || cpf.length < 14) { 
-        cpfNotaAtual = "";
-        document.getElementById("cupom-cpf-cliente").innerText = "Não informado";
-        document.getElementById("display-cpf-nota").innerText = "Não informado";
-        fecharModal('modal-cpf');
-        return;
-    }
-
-    try {
-        const resp = await fetch('http://localhost:3000/api/fiados');
-        const clientes = await resp.json();
-        const clienteEncontrado = clientes.find(c => c.cpf === cpf);
-
-        if (clienteEncontrado) {
-            cpfNotaAtual = cpf;
-            document.getElementById("cupom-cpf-cliente").innerText = cpf;
-            document.getElementById("display-cpf-nota").innerText = `${cpf} (${clienteEncontrado.cliente})`;
-            fecharModal('modal-cpf');
-        } else {
-            alert("CPF não encontrado! Por favor, cadastre os dados do cliente.");
-            fecharModal('modal-cpf');
-            
-            window.cadastrandoPeloCPF = true; 
-            abrirModalCadastrarFiado(cpf); 
-        }
-    } catch (e) { alert("Erro ao consultar CPF no banco de dados."); }
-}
-
-function abrirModalCNPJ() {
-    document.getElementById('modal-cnpj').classList.add('active');
-    setTimeout(() => {
-        const input = document.getElementById('input-cnpj-modal');
-        input.value = cnpjNotaAtual; 
-        input.focus();
-    }, 100);
-}
-
-async function confirmarCNPJ() {
-    let cnpj = document.getElementById('input-cnpj-modal').value.trim();
-    
-    if (!cnpj || cnpj.length < 18) { 
-        cnpjNotaAtual = "";
-        nomeLojaCnpjAtual = "";
-        document.getElementById("cupom-cnpj-cliente").innerText = "Não informado";
-        document.getElementById("display-cnpj-nota").innerText = "Não informado";
-        fecharModal('modal-cnpj');
-        return;
-    }
-
-    try {
-        const resp = await fetch('http://localhost:3000/api/fiados');
-        const clientes = await resp.json();
-        const lojaEncontrada = clientes.find(c => c.cpf === cnpj); 
-
-        if (lojaEncontrada) {
-            cnpjNotaAtual = cnpj;
-            nomeLojaCnpjAtual = lojaEncontrada.cliente;
-            document.getElementById("cupom-cnpj-cliente").innerText = `${cnpj} - ${nomeLojaCnpjAtual}`;
-            document.getElementById("display-cnpj-nota").innerText = `${cnpj} (${nomeLojaCnpjAtual})`;
-            fecharModal('modal-cnpj');
-        } else {
-            fecharModal('modal-cnpj');
-            abrirModalCadastrarCNPJ(cnpj);
-        }
-    } catch (e) { alert("Erro ao consultar CNPJ no banco de dados."); }
-}
-
-function abrirModalCadastrarCNPJ(cnpjSugerido) {
-    document.getElementById("novocnpj-nome").value = "";
-    document.getElementById("novocnpj-cnpj").value = cnpjSugerido;
-    document.getElementById('modal-cadastrar-cnpj').classList.add('active');
-    setTimeout(() => document.getElementById("novocnpj-nome").focus(), 100);
-}
-
-async function salvarNovoCNPJ() {
-    const nomeLoja = document.getElementById("novocnpj-nome").value.trim().toUpperCase();
-    const cnpj = document.getElementById("novocnpj-cnpj").value.trim();
-
-    if (!nomeLoja) return alert("O Nome da Loja é obrigatório!");
-
-    const novaLoja = {
-        cliente: nomeLoja, cpf: cnpj, telefone: "Não informado",
-        endereco: "Cadastrado no Caixa", dataCompra: new Date().toLocaleDateString('pt-BR'),
-        dataPagamento: "A combinar", total: 0, valorPago: 0, itens: [], aniversario: "Não informado"
-    };
-
-    try {
-        await fetch('http://localhost:3000/api/fiados', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novaLoja)
-        });
-        
-        fecharModal('modal-cadastrar-cnpj');
-        cnpjNotaAtual = cnpj;
-        nomeLojaCnpjAtual = nomeLoja;
-        
-        document.getElementById("cupom-cnpj-cliente").innerText = `${cnpj} - ${nomeLoja}`;
-        document.getElementById("display-cnpj-nota").innerText = `${cnpj} (${nomeLoja})`;
-        
-    } catch(e) { alert("Erro ao cadastrar a loja no sistema."); }
+    cpfNotaAtual = cpf;
+    document.getElementById("cupom-cpf-cliente").innerText = cpf || "Não informado";
+    document.getElementById("display-cpf-nota").innerText = cpf || "Não informado";
+    fecharModal('modal-cpf');
 }
 
 function abrirQuantidade() {
@@ -1084,7 +595,6 @@ function abrirQuantidade() {
         input.value = ""; input.focus();
     }, 100);
 }
-
 function confirmarQuantidade() {
     let valStr = document.getElementById('input-nova-qtd').value.replace(',', '.');
     let val = parseFloat(valStr);
@@ -1093,12 +603,6 @@ function confirmarQuantidade() {
         atualizarVisorQuantidade();
     }
     fecharModal('modal-quantidade');
-
-    // Se a gente veio pelo Avulso novo, aplica ele na compra agora de forma automática
-    if (avulsoPendenteParaQuantidade) {
-        adicionarProduto(avulsoPendenteParaQuantidade.codigo_barras);
-        avulsoPendenteParaQuantidade = null;
-    }
 }
 
 function atualizarVisorQuantidade() {
@@ -1106,84 +610,53 @@ function atualizarVisorQuantidade() {
 }
 
 function adicionarProduto(codigoBarras) {
+    if (codigoBarras.length === 13 && codigoBarras.startsWith("2")) {
+        let codigoExtraido = parseInt(codigoBarras.substring(1, 5), 10);
+        let precoTotal = parseInt(codigoBarras.substring(7, 12), 10) / 100;
+        const produtoPeso = produtosPorPeso.find(p => p.codigo === codigoExtraido);
+
+        if (produtoPeso) {
+            const itemVenda = {
+                codigo_barras: codigoBarras,
+                nome: "(Bal) " + produtoPeso.nome,
+                preco: precoTotal,
+                quantidade: 1, 
+                subtotal: precoTotal
+            };
+
+            carrinho.push(itemVenda);
+            
+            document.getElementById("display-nome-produto").innerText = itemVenda.nome;
+            document.getElementById("display-unit").innerText = precoTotal.toFixed(2).replace('.',',');
+            document.getElementById("display-subtotal").innerText = precoTotal.toFixed(2).replace('.',',');
+
+            multiplicadorAtual = 1;
+            atualizarVisorQuantidade();
+            atualizarTela();
+            return; 
+        }
+    }
+
     const produto = produtosDoBanco.find(p => p.codigo_barras === codigoBarras);
     if (produto) {
-        if (produto.variacoes && produto.variacoes.length > 1) {
-            abrirModalVariacoes(produto);
+        const itemExistente = carrinho.find(i => i.codigo_barras === produto.codigo_barras);
+        if (itemExistente) {
+            itemExistente.quantidade += multiplicadorAtual; 
+            itemExistente.subtotal = itemExistente.quantidade * itemExistente.preco;
         } else {
-            let precoFinal = produto.preco;
-            let nomeFinal = produto.nome;
-            if (produto.variacoes && produto.variacoes.length === 1) {
-                precoFinal = produto.variacoes[0].preco;
-                nomeFinal = produto.variacoes[0].nome;
-            }
-            inserirNoCarrinho(produto, nomeFinal, precoFinal);
+            carrinho.push({ ...produto, quantidade: multiplicadorAtual, subtotal: produto.preco * multiplicadorAtual });
         }
+        
+        document.getElementById("display-nome-produto").innerText = produto.nome;
+        document.getElementById("display-unit").innerText = parseFloat(produto.preco).toFixed(2).replace('.',',');
+        document.getElementById("display-subtotal").innerText = (parseFloat(produto.preco) * multiplicadorAtual).toFixed(2).replace('.',',');
+        
+        atualizarTela();
+        multiplicadorAtual = 1; 
+        atualizarVisorQuantidade();
     } else {
         abrirCadastroRapido(codigoBarras);
     }
-}
-
-function inserirNoCarrinho(produtoOriginal, nomeVariacao, precoVariacao) {
-    // Retira qualquer rastro de "AVULSO" do nome caso seja um produto antigo cadastrado assim
-    let nomeFinal = nomeVariacao.replace(/\(AVULSO\)\s*/g, '').trim();
-
-    const itemExistente = carrinho.find(i => i.codigo_barras === produtoOriginal.codigo_barras && i.nome === nomeFinal);
-    
-    if (itemExistente) {
-        itemExistente.quantidade += multiplicadorAtual; 
-        itemExistente.subtotal = itemExistente.quantidade * itemExistente.preco;
-    } else {
-        carrinho.push({ 
-            ...produtoOriginal, 
-            nome: nomeFinal,
-            preco: precoVariacao,
-            quantidade: multiplicadorAtual, 
-            subtotal: precoVariacao * multiplicadorAtual,
-            variacaoNome: nomeFinal 
-        });
-    }
-    
-    document.getElementById("display-nome-produto").innerText = nomeFinal;
-    document.getElementById("display-unit").innerText = parseFloat(precoVariacao).toFixed(2).replace('.',',');
-    document.getElementById("display-subtotal").innerText = (parseFloat(precoVariacao) * multiplicadorAtual).toFixed(2).replace('.',',');
-    
-    atualizarTela();
-    multiplicadorAtual = 1; 
-    atualizarVisorQuantidade();
-}
-
-function abrirModalVariacoes(produto) {
-    produtoAguardandoVariacao = produto;
-    indiceVariacaoSelecionada = 0;
-    document.getElementById("variacao-nome-produto").innerText = produto.nome;
-    
-    renderizarListaVariacoes();
-    document.getElementById("modal-variacoes").classList.add("active");
-}
-
-function renderizarListaVariacoes() {
-    const lista = document.getElementById("lista-variacoes");
-    lista.innerHTML = "";
-    
-    produtoAguardandoVariacao.variacoes.forEach((v, index) => {
-        let btnCor = index === indiceVariacaoSelecionada ? "background: #0055A4; color: white;" : "background: #f0f8ff; color: #003366;";
-        let textoPreco = index === indiceVariacaoSelecionada ? "white" : "#10b981";
-        
-        lista.innerHTML += `
-            <button type="button" onclick="confirmarVariacao(${index})" style="${btnCor} padding: 15px; border: 2px solid #b3d4ff; border-radius: 6px; font-size: 1.2rem; font-weight: bold; text-align: left; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between;">
-                <span>${v.nome}</span>
-                <span style="color: ${textoPreco};">R$ ${parseFloat(v.preco).toFixed(2).replace('.',',')}</span>
-            </button>
-        `;
-    });
-}
-
-function confirmarVariacao(index) {
-    let varEscolhida = produtoAguardandoVariacao.variacoes[index];
-    fecharModal("modal-variacoes");
-    inserirNoCarrinho(produtoAguardandoVariacao, varEscolhida.nome, varEscolhida.preco);
-    produtoAguardandoVariacao = null;
 }
 
 function atualizarTela() {
@@ -1206,8 +679,6 @@ function atualizarTela() {
         </tr>`;
     });
 
-    valorTotal = Math.round(valorTotal * 100) / 100;
-
     let totalStr = `R$ ${valorTotal.toFixed(2).replace('.', ',')}`;
     document.getElementById("notinha-subtotal").innerText = totalStr;
     document.getElementById("notinha-total").innerText = totalStr;
@@ -1229,28 +700,20 @@ function removerItemDoCarrinho() {
 }
 
 function cancelarVenda() {
-    if (carrinho.length > 0 && confirm("Deseja realmente CANCELAR o carrinho atual?")) {
-        limparCaixaEVisores();
-    }
-    setTimeout(() => { document.getElementById("venda-barras").focus(); }, 50);
+    if (carrinho.length > 0 && confirm("Deseja realmente CANCELAR o carrinho atual?")) limparCaixaEVisores();
 }
 
 function limparCaixaEVisores() {
     carrinho = []; valorTotal = 0; multiplicadorAtual = 1;
-    contaFiadoOriginal_id = null; 
-    cpfNotaAtual = "";
-    nomeLojaCnpjAtual = ""; 
+    contaFiadoOriginal_id = null; cpfNotaAtual = "";
     modoCarrinho = false; indiceCarrinhoSelecionado = -1;
     vendaEditandoId = null;
-    window.cadastrandoPeloCPF = false;
     document.getElementById("status-fiado-carregado").style.display = "none";
     document.getElementById("display-nome-produto").innerText = "CAIXA LIVRE";
     document.getElementById("display-unit").innerText = "0,00";
     document.getElementById("display-subtotal").innerText = "0,00";
     document.getElementById("cupom-cpf-cliente").innerText = "Não informado";
     document.getElementById("display-cpf-nota").innerText = "Não informado";
-    document.getElementById("cupom-cnpj-cliente").innerText = "Não informado"; 
-    document.getElementById("display-cnpj-nota").innerText = "Não informado"; 
     atualizarVisorQuantidade(); atualizarTela(); document.getElementById("venda-barras").focus();
 }
 
@@ -1272,7 +735,8 @@ function selecionarFormaPagamento(forma) {
     document.querySelectorAll('.forma-box').forEach(b => b.classList.remove('active'));
     
     if (forma === 'Dinheiro') document.getElementById('btn-pgto-dinheiro').classList.add('active');
-    if (forma === 'Cartão') document.getElementById('btn-pgto-cartao').classList.add('active');
+    if (forma === 'Cartão de Crédito') document.getElementById('btn-pgto-cartao').classList.add('active');
+    if (forma === 'Cartão de Débito') document.getElementById('btn-pgto-debito').classList.add('active');
     if (forma === 'PIX') document.getElementById('btn-pgto-pix').classList.add('active');
 
     if(valorFaltanteMisto > 0) {
@@ -1299,8 +763,7 @@ function adicionarPagamentoCaixa() {
 
 function atualizarResumoPagamentoMisto() {
     let totalPagoNaVenda = pagamentosCaixa.reduce((acc, p) => acc + p.valor, 0);
-    
-    valorFaltanteMisto = Math.round((valorTotal - totalPagoNaVenda) * 100) / 100;
+    valorFaltanteMisto = valorTotal - totalPagoNaVenda;
     
     let trocoVisual = 0;
     if (valorFaltanteMisto < 0) {
@@ -1351,49 +814,103 @@ function confirmarVendaComImpressao(imprimir) {
     finalizarVendaReal(imprimir);
 }
 
+async function finalizarVendaReal(imprimir) {
+    let nomePagamento = pagamentosCaixa.length === 1 ? pagamentosCaixa[0].forma : "Misto";
+    let totalPago = pagamentosCaixa.reduce((acc, p) => acc + p.valor, 0);
+    
+    let valorVendaRegistrada = (contaFiadoOriginal_id && totalPago < valorTotal) ? totalPago : valorTotal;
+    
+    const agora = new Date();
+    
+    const vendaObj = {
+        data: (vendaEditandoId && dataOriginalVendaEditada) ? dataOriginalVendaEditada : agora.toLocaleDateString('pt-BR'),
+        hora: (vendaEditandoId && horaOriginalVendaEditada) ? horaOriginalVendaEditada : agora.toLocaleTimeString('pt-BR', { hour12: false }),
+        totalBruto: valorVendaRegistrada,
+        desconto: 0,
+        totalLiquido: valorVendaRegistrada, 
+        custoTaxas: 0,
+        pagamento: nomePagamento,
+        detalhesPagamento: pagamentosCaixa, 
+        itens: carrinho,
+        valorParaRelatorio: valorVendaRegistrada 
+    };
+    
+    try {
+        if (vendaEditandoId) {
+            await db.collection("vendas").doc(vendaEditandoId).set(vendaObj);
+        } else {
+            await db.collection("vendas").add(vendaObj);
+        }
+
+        if (contaFiadoOriginal_id) {
+            const resp = await fetch(`http://localhost:3000/api/fiados/${contaFiadoOriginal_id}`);
+            if (resp.ok) {
+                const contaAtual = await resp.json();
+
+                if (valorFaltanteMisto > 0) {
+                    contaAtual.total = contaAtual.total - totalPago; 
+                } else {
+                    contaAtual.valorPago = contaAtual.total;
+                }
+                
+                await fetch(`http://localhost:3000/api/fiados/${contaFiadoOriginal_id}`, { 
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(contaAtual)
+                });
+            }
+        }
+    } catch(e) { 
+        console.error("Erro ao salvar no Firebase ou Servidor!", e);
+        alert("Erro ao salvar a venda. Verifique a internet ou o servidor local!");
+        return; 
+    }
+
+    if(imprimir === true) {
+        imprimirNotinha();
+    }
+
+    fecharModal('modal-confirmar-impressao');
+    fecharModal('modal-pagamento');
+    limparCaixaEVisores();
+}
+
 function imprimirNotinha() {
     const recibo = document.getElementById("recibo-impressao");
     
     let htmlRecibo = `
-        <div style="font-weight: bold; width: 95%; margin: 0 auto; padding-right: 4px;">
-            <div style="text-align: center; margin-bottom: 10px;">
-                <h2 style="margin: 0;">${configImpressora.nome}</h2>
-                <p style="margin: 0; font-size: 11px;">CNPJ: ${configImpressora.cnpj}</p>
-                <p style="margin: 0; font-size: 11px;">${configImpressora.endereco}</p>
-                <p style="margin: 5px 0;">--------------------------------</p>
-                <h3 style="margin: 0;">CUPOM FISCAL</h3>
-                <p style="margin: 5px 0;">--------------------------------</p>
-            </div>
-            
-            <table style="width: 100%; text-align: left; font-size: 10px; font-weight: bold; margin-bottom: 10px; border-collapse: collapse; table-layout: fixed;">
-                <tr>
-                    <th style="width: 15%; border-bottom: 1px dashed #000;">QTD</th>
-                    <th style="width: 45%; border-bottom: 1px dashed #000;">DESC.</th>
-                    <th style="width: 40%; text-align: right; border-bottom: 1px dashed #000; padding-right: 2px;">TOTAL</th>
-                </tr>
+        <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="margin: 0; font-size: 16px;">${configImpressora.nome}</h2>
+            <p style="margin: 0; font-size: 10px;">CNPJ: ${configImpressora.cnpj}</p>
+            <p style="margin: 0; font-size: 10px;">${configImpressora.endereco}</p>
+            <p style="margin: 5px 0;">--------------------------------</p>
+            <h3 style="margin: 0; font-size: 14px;">CUPOM NÃO FISCAL</h3>
+            <p style="margin: 5px 0;">--------------------------------</p>
+        </div>
+        <table style="width: 100%; text-align: left; font-size: 11px; margin-bottom: 10px; border-collapse: collapse;">
+            <tr><th style="border-bottom: 1px dashed #000;">QTD</th><th style="border-bottom: 1px dashed #000;">DESC.</th><th style="text-align: right; border-bottom: 1px dashed #000;">TOTAL</th></tr>
     `;
 
     carrinho.forEach(item => {
         let qtd = Number.isInteger(item.quantidade) ? item.quantidade : item.quantidade.toFixed(3);
-        let nomeLimitado = item.nome; 
+        let nomeLimitado = item.nome.substring(0, 15);
         htmlRecibo += `
             <tr>
                 <td style="vertical-align: top; padding-top: 3px;">${qtd}</td>
-                <td style="padding-top: 3px; word-wrap: break-word;">${nomeLimitado}</td>
-                <td style="text-align: right; vertical-align: top; padding-top: 3px; padding-right: 2px;">R$ ${item.subtotal.toFixed(2).replace('.',',')}</td>
+                <td style="padding-top: 3px;">${nomeLimitado}</td>
+                <td style="text-align: right; padding-top: 3px;">R$ ${item.subtotal.toFixed(2).replace('.',',')}</td>
             </tr>
         `;
     });
 
     htmlRecibo += `
-            </table>
-            <p style="margin: 5px 0; text-align: center;">--------------------------------</p>
-            <h2 style="text-align: right; margin: 5px 0; font-size: 14px; padding-right: 2px;">TOTAL: R$ ${valorTotal.toFixed(2).replace('.',',')}</h2>
-            <div style="font-size: 11px; margin-top: 10px; font-weight: bold;">
+        </table>
+        <p style="margin: 5px 0; text-align: center;">--------------------------------</p>
+        <h2 style="text-align: right; margin: 5px 0; font-size: 14px;">TOTAL: R$ ${valorTotal.toFixed(2).replace('.',',')}</h2>
+        <div style="font-size: 11px; margin-top: 10px;">
     `;
     
     pagamentosCaixa.forEach(p => {
-        htmlRecibo += `<div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span style="padding-left: 2px;">PAGO EM ${p.forma.toUpperCase()}</span><span style="padding-right: 2px;">R$ ${p.valor.toFixed(2).replace('.',',')}</span></div>`;
+        htmlRecibo += `<div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span>PAGO EM ${p.forma.toUpperCase()}</span><span>R$ ${p.valor.toFixed(2).replace('.',',')}</span></div>`;
     });
     
     let totalPago = pagamentosCaixa.reduce((acc, p) => acc + p.valor, 0);
@@ -1401,25 +918,37 @@ function imprimirNotinha() {
     let falta = valorTotal - totalPago;
 
     if(troco > 0) {
-         htmlRecibo += `<div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px;"><span style="padding-left: 2px;">TROCO</span><span style="padding-right: 2px;">R$ ${troco.toFixed(2).replace('.',',')}</span></div>`;
+         htmlRecibo += `<div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 5px; font-size: 12px;"><span>TROCO</span><span>R$ ${troco.toFixed(2).replace('.',',')}</span></div>`;
     } else if (falta > 0 && contaFiadoOriginal_id) {
-         htmlRecibo += `<div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: #000;"><span style="padding-left: 2px;">FICOU DEVENDO</span><span style="padding-right: 2px;">R$ ${falta.toFixed(2).replace('.',',')}</span></div>`;
+         htmlRecibo += `<div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 5px; font-size: 12px; color: #000;"><span>FICOU DEVENDO</span><span>R$ ${falta.toFixed(2).replace('.',',')}</span></div>`;
     }
 
-    let textoCnpj = cnpjNotaAtual ? `${cnpjNotaAtual} (${nomeLojaCnpjAtual})` : 'Não informado';
-
     htmlRecibo += `
-            </div>
-            <p style="margin: 15px 0 5px 0; text-align: center;">--------------------------------</p>
-            <p style="text-align: center; font-size: 11px;">${configImpressora.rodape}</p>
-            <p style="text-align: center; font-size: 11px; margin-top: 5px; border: 1px dashed #000; padding: 4px;">CPF DO CONSUMIDOR: ${cpfNotaAtual || 'Não informado'}</p>
-            <p style="text-align: center; font-size: 11px; margin-top: 5px; border: 1px dashed #000; padding: 4px;">CNPJ DA LOJA: ${textoCnpj}</p>
         </div>
+        <p style="margin: 15px 0 5px 0; text-align: center;">--------------------------------</p>
+        <p style="text-align: center; font-size: 11px;">${configImpressora.rodape}</p>
+        <p style="text-align: center; font-size: 10px; margin-top: 5px;">CPF: ${cpfNotaAtual || 'Não informado'}</p>
     `;
 
     recibo.innerHTML = htmlRecibo;
-    window.print();
-    setTimeout(() => { document.getElementById("venda-barras").focus(); }, 100);
+
+    let cssImpressao = document.createElement('style');
+    cssImpressao.innerHTML = `
+        @media print {
+            body * { visibility: hidden; } 
+            #recibo-impressao, #recibo-impressao * { visibility: visible; } 
+            #recibo-impressao { 
+                position: absolute; left: 0; top: 0; 
+                width: 100%; max-width: 80mm; 
+                margin: 0; padding: 0; font-family: monospace; color: black;
+            }
+        }
+    `;
+    document.head.appendChild(cssImpressao);
+
+    window.print(); 
+
+    document.head.removeChild(cssImpressao); 
 }
 
 async function abrirModalContas() {
@@ -1493,10 +1022,7 @@ function atualizarEstilosF4() {
 }
 
 async function processarFiadoExistente(id, cliente) {
-    if (!confirm(`Deseja salvar o carrinho atual na conta de ${cliente}?`)) {
-        setTimeout(() => { document.getElementById("venda-barras").focus(); }, 50);
-        return;
-    }
+    if (!confirm(`Deseja salvar o carrinho atual na conta de ${cliente}?`)) return;
 
     try {
         const resp = await fetch(`http://localhost:3000/api/fiados/${id}`);
@@ -1514,14 +1040,10 @@ async function processarFiadoExistente(id, cliente) {
     } catch (e) { alert("Erro ao lançar no fiado."); }
 }
 
-function abrirModalCadastrarFiado(cpfSugerido = "") {
+function abrirModalCadastrarFiado() {
     document.getElementById("novofiado-nome").value = "";
-    document.getElementById("novofiado-cpf").value = cpfSugerido; 
+    document.getElementById("novofiado-cpf").value = "";
     document.getElementById("novofiado-telefone").value = "";
-    
-    const campoNasc = document.getElementById("novofiado-nascimento");
-    if (campoNasc) campoNasc.value = "";
-
     document.getElementById('modal-cadastrar-fiado').classList.add('active');
     setTimeout(() => document.getElementById("novofiado-nome").focus(), 100);
 }
@@ -1530,39 +1052,22 @@ async function salvarNovoFiadoNoPDV() {
     const nome = document.getElementById("novofiado-nome").value.trim();
     const cpf = document.getElementById("novofiado-cpf").value.trim();
     const telefone = document.getElementById("novofiado-telefone").value.trim();
-    const nascimento = document.getElementById("novofiado-nascimento") ? document.getElementById("novofiado-nascimento").value.trim() : "";
 
     if (!nome) return alert("O Nome é obrigatório!");
-
-    const itensParaConta = window.cadastrandoPeloCPF ? [] : [...carrinho];
-    const totalParaConta = window.cadastrandoPeloCPF ? 0 : valorTotal;
 
     const novaConta = {
         cliente: nome, cpf: cpf || "Não informado", telefone: telefone || "Não informado",
         endereco: "Cadastrado no Caixa", dataCompra: new Date().toLocaleDateString('pt-BR'),
-        dataPagamento: "A combinar", total: totalParaConta, valorPago: 0, itens: itensParaConta,
-        aniversario: nascimento || "Não informado" 
+        dataPagamento: "A combinar", total: valorTotal, valorPago: 0, itens: [...carrinho] 
     };
 
     try {
         await fetch('http://localhost:3000/api/fiados', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novaConta)
         });
-        alert(`Conta/Cliente criado e vinculado para ${nome}!`);
-        
-        fecharModal('modal-cadastrar-fiado');
-        
-        if (window.cadastrandoPeloCPF) {
-            cpfNotaAtual = cpf;
-            document.getElementById("cupom-cpf-cliente").innerText = cpf || "Não informado";
-            document.getElementById("display-cpf-nota").innerText = cpf ? `${cpf} (${nome})` : "Não informado";
-            window.cadastrandoPeloCPF = false; 
-        } else {
-            fecharModal('modal-selecionar-conta'); 
-            limparCaixaEVisores();
-        }
+        alert(`Conta criada e vinculada para ${nome}!`);
+        fecharModal('modal-cadastrar-fiado'); fecharModal('modal-selecionar-conta'); limparCaixaEVisores();
     } catch(e) { alert("Erro ao criar conta."); }
-    setTimeout(() => { document.getElementById("venda-barras").focus(); }, 100);
 }
 
 function abrirConfiguracoes() { document.getElementById('modal-taxas').classList.add('active'); }
